@@ -9,6 +9,7 @@ vim.g.have_nerd_font = false
 -- [[ Setting options ]]
 -- See `:help vim.opt`
 -- NOTE: You can change these options as you wish!
+
 --  For more options, you can see `:help option-list`
 
 -- Make line numbers default
@@ -192,10 +193,11 @@ require('lazy').setup({
       },
     },
   },
-
   {
-    'ThePrimeagen/harpoon',
+    'charludo/projectmgr.nvim',
+    lazy = false, -- important!
   },
+
   {
     'jiaoshijie/undotree',
     dependencies = 'nvim-lua/plenary.nvim',
@@ -206,6 +208,11 @@ require('lazy').setup({
   },
   {
     'ThePrimeagen/vim-be-good',
+  },
+  {
+    'ThePrimeagen/harpoon',
+    branch = 'harpoon2',
+    dependencies = { 'nvim-lua/plenary.nvim' },
   },
   {
     'nvim-treesitter/nvim-treesitter-context',
@@ -1023,6 +1030,49 @@ require('lazy').setup({
     },
   },
 })
+
+local harpoon = require 'harpoon'
+
+-- REQUIRED
+harpoon:setup()
+-- REQUIRED
+
+-- basic telescope configuration
+local conf = require('telescope.config').values
+local function toggle_telescope(harpoon_files)
+  local file_paths = {}
+  for _, item in ipairs(harpoon_files.items) do
+    table.insert(file_paths, item.value)
+  end
+
+  require('telescope.pickers')
+    .new({}, {
+      prompt_title = 'Harpoon',
+      finder = require('telescope.finders').new_table {
+        results = file_paths,
+      },
+      previewer = conf.file_previewer {},
+      sorter = conf.generic_sorter {},
+    })
+    :find()
+end
+
+vim.keymap.set('n', '<C-e>', function()
+  toggle_telescope(harpoon:list())
+end, { desc = 'Open harpoon window' })
+
+vim.keymap.set('n', '<leader>a', function()
+  harpoon:list():add()
+end)
+-- Toggle previous & next buffers stored within Harpoon list
+vim.keymap.set('n', '<C-S-P>', function()
+  harpoon:list():prev()
+end)
+vim.keymap.set('n', '<C-S-N>', function()
+  harpoon:list():next()
+end)
+
+vim.api.nvim_set_keymap('n', '<leader>p', ':ProjectMgr<CR>', {})
 vim.treesitter.language.register('apex', { 'apex', 'apexcode' })
 vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
