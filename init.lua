@@ -201,10 +201,6 @@ require('lazy').setup({
       },
     },
   },
-  {
-    'charludo/projectmgr.nvim',
-    lazy = false, -- important!
-  },
 
   {
     'jiaoshijie/undotree',
@@ -216,6 +212,17 @@ require('lazy').setup({
   },
   {
     'ThePrimeagen/vim-be-good',
+  },
+  {
+    'ahmedkhalf/project.nvim',
+    config = function()
+      require('project_nvim').setup {
+        -- your configuration comes here
+        -- or leave it empty to use the default settings
+        -- refer to the configuration section below
+        patterns = { '.git', 'Makefile', '*.sln', 'build/env.sh', 'sfdx-project.json' },
+      }
+    end,
   },
   {
     'nvimtools/none-ls.nvim', -- configure formatters & linters
@@ -398,8 +405,10 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
-
+      pcall(require('telescope').load_extension, 'projects')
+      require('telescope').extensions.projects.projects {}
       -- See `:help telescope.builtin`
+
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
@@ -412,6 +421,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
+      vim.keymap.set('n', '<leader>sp', require('telescope').extensions.projects.projects, { desc = 'Telescope: Project Repo List' })
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
         -- You can pass additional configuration to Telescope to change the theme, layout, etc.
@@ -1036,8 +1046,6 @@ require('lazy').setup({
     },
   },
 })
-
-vim.api.nvim_set_keymap('n', '<leader>p', ':ProjectMgr<CR>', {})
 vim.treesitter.language.register('apex', { 'apex', 'apexcode' })
 vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
