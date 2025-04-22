@@ -1,12 +1,14 @@
 local M = {}
 
--- Utility to show a floating popup with merged job output
-local function show_popup(lines)
-  local buf = vim.api.nvim_create_buf(false, true)
+local function add_linees_to_buf(buf, lines)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_win_set_height(buf, #lines)
+end
 
+-- Utility to show a floating popup with merged job output
+local function show_popup(buf)
   local width = math.floor(vim.o.columns * 0.8)
-  local height = math.min(#lines, math.floor(vim.o.lines * 0.6))
+  local height = math.min(5, math.floor(vim.o.lines * 0.6))
   local row = math.floor((vim.o.lines - height) / 2)
   local col = math.floor((vim.o.columns - width) / 2)
 
@@ -40,10 +42,16 @@ local function show_popup(lines)
 end
 
 -- Buffer job output here
+local buf = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
 local output_lines = {}
 
 M.job_call = function(cmd, msg, err_msg, cb)
-  job_failed = false
+  output_lines = {}
+  vim.schedule(function()
+    show_popup(buf)
+  end)
+
   vim.fn.jobstart(cmd, {
 
     stdout_buffered = true,
@@ -64,12 +72,11 @@ M.job_call = function(cmd, msg, err_msg, cb)
     end,
 
     on_exit = function(_, code)
-      local filtered = vim.tbl_filter(function(line)
+      filtered = vim.tbl_filter(function(line)
         return line and line ~= ''
       end, output_lines)
-
       vim.schedule(function()
-        show_popup(filtered)
+        add_linees_to_buf(buf, filtered)
       end)
       if code == 0 and cb ~= nil then
         cb()
@@ -79,9 +86,9 @@ M.job_call = function(cmd, msg, err_msg, cb)
 end
 
 M.sf = function()
-  local filepath = vim.fn.expand '%:p'
-  vim.notify('sfdx force:source:deploy -p [%s]' .. filepath, vim.log.levels.INFO)
-  M.job_call(string.format('sfdx force:source:deploy -p [%s]', filepath), nil, nil, nil)
+  local relpath = vim.fn.expand '%:.'
+  vim.notify(string.format('sf project deploy start --source-dir %s', relpath), vim.log.levels.INFO)
+  M.job_call(string.format('sf project deploy start --source-dir %s', relpath), nil, nil, nil)
 end
 
 -- Map a command to the function
