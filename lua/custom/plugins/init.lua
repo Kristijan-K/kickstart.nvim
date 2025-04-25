@@ -5,61 +5,65 @@ local function add_linees_to_buf(buf, lines)
   vim.api.nvim_win_set_height(buf, #lines)
 end
 
--- Utility to show a floating popup with merged job output
-local function show_popup(buf)
-  local width = math.floor(vim.o.columns * 0.8)
-  local height = math.min(5, math.floor(vim.o.lines * 0.6))
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
-
-  local win = vim.api.nvim_open_win(buf, true, {
-    relative = 'editor',
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    style = 'minimal',
-    border = 'rounded',
-  })
-
-  -- Map <Esc> and <C-c> to close the window
+local function create_floating_window(config, enter)
+  if enter == nil then
+    enter = false
+  end
+  if config == nil then
+    -- Get size of current window
+    local width = 100
+    local height = 10
+    -- Center the floating window within current window
+    local col = math.floor((vim.o.columns - width) / 2)
+    local row = math.floor((vim.o.lines - height) / 2)
+    -- Floating window options
+    config = {
+      style = 'minimal',
+      relative = 'win',
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      border = 'rounded',
+    }
+  end
+  local buf = vim.api.nvim_create_buf(false, true) -- No file, scratch buffer
+  local win = vim.api.nvim_open_win(buf, enter or false, config)
   vim.keymap.set('n', '<Esc>', function()
     if vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_win_close(win, true)
     end
-  end, { buffer = buf, nowait = true, silent = true })
+  end, { buffer = buf })
 
   vim.keymap.set('n', '<C-c>', function()
     if vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_win_close(win, true)
     end
-  end, { buffer = buf, nowait = true, silent = true })
+  end, { buffer = buf })
 
-  -- Optional: make the buffer modifiable and navigable
-  vim.bo[buf].modifiable = false
-  vim.bo[buf].buftype = 'nofile'
-  vim.bo[buf].bufhidden = 'wipe'
+  return { buf = buf, win = win }
 end
 
--- Buffer job output here
-local buf = vim.api.nvim_create_buf(false, true)
-vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
 local output_lines = {}
 
 M.job_call = function(cmd, msg, err_msg, cb)
   output_lines = {}
-  vim.schedule(function()
-    show_popup(buf)
-  end)
+
+  local float = create_floating_window()
 
   vim.fn.jobstart(cmd, {
 
-    stdout_buffered = true,
-    stderr_buffered = true,
+    stdout_buffered = false,
+    stderr_buffered = false,
 
     on_stdout = function(_, data, _)
       if data and #data > 0 then
         vim.list_extend(output_lines, data)
+
+        filtered = vim.tbl_filter(function(line)
+          return line and line ~= ''
+        end, output_lines)
+        vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
       end
     end,
 
@@ -68,6 +72,12 @@ M.job_call = function(cmd, msg, err_msg, cb)
         for i, line in ipairs(data) do
           table.insert(output_lines, 'ERR: ' .. line)
         end
+
+        filtered = vim.tbl_filter(function(line)
+          return line and line ~= ''
+        end, output_lines)
+
+        vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
       end
     end,
 
@@ -75,9 +85,8 @@ M.job_call = function(cmd, msg, err_msg, cb)
       filtered = vim.tbl_filter(function(line)
         return line and line ~= ''
       end, output_lines)
-      vim.schedule(function()
-        add_linees_to_buf(buf, filtered)
-      end)
+
+      vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
       if code == 0 and cb ~= nil then
         cb()
       end
