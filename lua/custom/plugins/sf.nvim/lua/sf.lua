@@ -1,10 +1,5 @@
 local M = {}
 
-local function add_linees_to_buf(buf, lines)
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.api.nvim_win_set_height(buf, #lines)
-end
-
 local function create_floating_window(config, enter)
   if enter == nil then
     enter = false
@@ -46,10 +41,22 @@ end
 
 local output_lines = {}
 
-M.job_call = function(cmd, msg, err_msg, cb)
+M.job_call = function(cmd, msg, config)
   output_lines = {}
 
   local float = create_floating_window()
+
+  local filter_lines = function()
+    local filtered = vim.tbl_filter(function(line)
+      return line and line ~= ''
+    end, output_lines)
+
+    while #output_lines > 12 do
+      table.remove(output_lines, 1) -- Remove from the front
+    end
+    vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
+    vim.api.nvim_set_current_win(float.win)
+  end
 
   vim.fn.jobstart(cmd, {
 
@@ -59,48 +66,41 @@ M.job_call = function(cmd, msg, err_msg, cb)
     on_stdout = function(_, data, _)
       if data and #data > 0 then
         vim.list_extend(output_lines, data)
-
-        filtered = vim.tbl_filter(function(line)
-          return line and line ~= ''
-        end, output_lines)
-        vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
+        filter_lines()
       end
     end,
 
     on_stderr = function(_, data, _)
       if data and #data > 0 then
         for i, line in ipairs(data) do
-          table.insert(output_lines, 'ERR: ' .. line)
+          table.insert(output_lines, line)
         end
-
-        filtered = vim.tbl_filter(function(line)
-          return line and line ~= ''
-        end, output_lines)
-
-        vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
+        filter_lines()
       end
     end,
 
     on_exit = function(_, code)
-      filtered = vim.tbl_filter(function(line)
-        return line and line ~= ''
-      end, output_lines)
-
-      vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
-      if code == 0 and cb ~= nil then
-        cb()
+      filter_lines()
+      if config and config.reloadFile then
+        vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter' }, {
+          command = 'checktime',
+        })
       end
+
+      vim.defer_fn(function()
+        vim.api.nvim_win_close(float.win, true)
+      end, 3000)
     end,
   })
 end
 
-M.sf = function()
+M.sf_execute = function(config)
   local relpath = vim.fn.expand '%:.'
-  vim.notify(string.format('sf project deploy start --source-dir %s', relpath), vim.log.levels.INFO)
-  M.job_call(string.format('sf project deploy start --source-dir %s', relpath), nil, nil, nil)
+  if config.path ~= nil then
+    relpath = config.path
+  end
+  vim.notify(string.format(config.cmd .. ' %s', relpath), vim.log.levels.INFO)
+  M.job_call(string.format(config.cmd .. ' %s 2>&1', relpath), nil, config)
 end
-
--- Map a command to the function
-vim.api.nvim_command 'command! HelloWorld lua require("custom/plugins").sf()'
 
 return M

@@ -311,6 +311,28 @@ require('lazy').setup({
 
   {
     {
+      dir = '~/AppData/Local/nvim/lua/custom/plugins/sf.nvim',
+
+      config = function()
+        require 'sf'
+        vim.keymap.set(
+          'n',
+          '<leader>xs',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf project deploy start --source-dir' } .. '<CR><CR>',
+          { desc = 'Push to Salesforce' }
+        )
+
+        vim.keymap.set(
+          'n',
+          '<leader>xr',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf project retrieve start --source-dir' } .. '<CR><CR>',
+          { desc = 'Retrieve file from Salesforce' }
+        )
+      end,
+    },
+  },
+  {
+    {
       dir = '~/AppData/Local/nvim/lua/custom/plugins/present.nvim',
       config = function()
         require 'present'
@@ -1079,9 +1101,9 @@ require('lazy').setup({
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   -- require 'kickstart.plugins.debug',
-  -- require 'kickstart.plugins.indent_line',
+  require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
