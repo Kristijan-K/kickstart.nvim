@@ -1,27 +1,27 @@
 local M = {}
 
-local function create_floating_window(config, enter)
+local function create_floating_window(opts, enter)
   if enter == nil then
     enter = false
   end
-  if config == nil then
-    -- Get size of current window
-    local width = 100
-    local height = 10
-    -- Center the floating window within current window
-    local col = math.floor((vim.o.columns - width) / 2)
-    local row = math.floor((vim.o.lines - height) / 2)
-    -- Floating window options
-    config = {
-      style = 'minimal',
-      relative = 'win',
-      width = width,
-      height = height,
-      row = row,
-      col = col,
-      border = 'rounded',
-    }
+  local width = 100
+  local height = 10
+  if opts.isTest == true then
+    height = 30
   end
+  -- Center the floating window within current window
+  local col = math.floor((vim.o.columns - width) / 2)
+  local row = math.floor((vim.o.lines - height) / 2)
+  -- Floating window options
+  local config = {
+    style = 'minimal',
+    relative = 'win',
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    border = 'rounded',
+  }
   local buf = vim.api.nvim_create_buf(false, true) -- No file, scratch buffer
   local win = vim.api.nvim_open_win(buf, enter or false, config)
   vim.keymap.set('n', '<Esc>', function()
@@ -44,15 +44,17 @@ local output_lines = {}
 M.job_call = function(cmd, msg, config)
   output_lines = {}
 
-  local float = create_floating_window()
+  local float = create_floating_window(config)
 
   local filter_lines = function()
     local filtered = vim.tbl_filter(function(line)
       return line and line ~= ''
     end, output_lines)
-
-    while #output_lines > 12 do
-      table.remove(output_lines, 1) -- Remove from the front
+    local max_lines = 12
+    if config.isTest ~= true then
+      while #output_lines > max_lines do
+        table.remove(output_lines, 1) -- Remove from the front
+      end
     end
     vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
     vim.api.nvim_set_current_win(float.win)
@@ -87,9 +89,11 @@ M.job_call = function(cmd, msg, config)
         })
       end
 
-      vim.defer_fn(function()
-        vim.api.nvim_win_close(float.win, true)
-      end, 3000)
+      if config.keepOpen ~= true then
+        vim.defer_fn(function()
+          vim.api.nvim_win_close(float.win, true)
+        end, 3000)
+      end
     end,
   })
 end
@@ -99,8 +103,15 @@ M.sf_execute = function(config)
   if config.path ~= nil then
     relpath = config.path
   end
-  vim.notify(string.format(config.cmd .. ' %s', relpath), vim.log.levels.INFO)
-  M.job_call(string.format(config.cmd .. ' %s 2>&1', relpath), nil, config)
+  local cmdString = ''
+  if config.isTest == true then
+    relpath = vim.fn.expand '%:t:r'
+    cmdString = string.format(config.cmd .. ' 2>&1', relpath)
+  else
+    cmdString = string.format(config.cmd .. ' %s 2>&1', relpath)
+  end
+  vim.notify(cmdString, vim.log.levels.INFO)
+  M.job_call(cmdString, nil, config)
 end
 
 return M

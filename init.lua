@@ -318,7 +318,7 @@ require('lazy').setup({
         vim.keymap.set(
           'n',
           '<leader>xs',
-          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf project deploy start --source-dir' } .. '<CR><CR>',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { reloadFile = true, cmd = 'sf project deploy start --source-dir' } .. '<CR><CR>',
           { desc = 'Push to Salesforce' }
         )
 
@@ -328,6 +328,13 @@ require('lazy').setup({
           '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf project retrieve start --source-dir' } .. '<CR><CR>',
           { desc = 'Retrieve file from Salesforce' }
         )
+
+        vim.keymap.set('n', '<leader>xt', '<cmd>SFExecute ' .. vim.fn.json_encode {
+          path = '',
+          isTest = true,
+          keepOpen = true,
+          cmd = 'sf apex test run --tests %s --wait 10 --result-format human',
+        } .. '<CR><CR>', { desc = 'Run tests for current file' })
       end,
     },
   },
