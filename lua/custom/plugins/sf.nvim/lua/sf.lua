@@ -5,9 +5,10 @@ local function create_floating_window(opts, enter)
     enter = false
   end
   local width = 100
-  local height = 10
+  local height = 12
   if opts.isTest == true then
-    height = 30
+    width = 120
+    height = 35
   end
   -- Center the floating window within current window
   local col = math.floor((vim.o.columns - width) / 2)
@@ -60,7 +61,7 @@ M.job_call = function(cmd, msg, config)
     vim.api.nvim_set_current_win(float.win)
   end
 
-  vim.fn.jobstart(cmd, {
+  vim.fn.jobstart({ 'powershell.exe', '-Command', cmd }, {
 
     stdout_buffered = false,
     stderr_buffered = false,
@@ -107,6 +108,7 @@ M.sf_execute = function(config)
   if config.isTest == true then
     relpath = vim.fn.expand '%:t:r'
     cmdString = string.format(config.cmd .. ' 2>&1', relpath)
+    cmdString = cmdString:gsub('"', '\\"')
   else
     cmdString = string.format(config.cmd .. ' %s 2>&1', relpath)
   end

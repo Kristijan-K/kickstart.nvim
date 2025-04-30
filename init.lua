@@ -333,7 +333,7 @@ require('lazy').setup({
           path = '',
           isTest = true,
           keepOpen = true,
-          cmd = 'sf apex test run --tests %s --wait 10 --result-format human',
+          cmd = 'sf apex test run --tests %s --wait 10 --code-coverage --result-format human',
         } .. '<CR><CR>', { desc = 'Run tests for current file' })
       end,
     },
