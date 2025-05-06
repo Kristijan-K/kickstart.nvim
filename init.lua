@@ -214,6 +214,89 @@ require('lazy').setup({
     'ThePrimeagen/vim-be-good',
   },
   {
+    'epwalsh/obsidian.nvim',
+    version = '*', -- recommended, use latest release instead of latest commit
+    lazy = true,
+    ft = 'markdown',
+    -- Replace the above line with this if you only want to load obsidian.nvim for markdown files in your vault:
+    -- event = {
+    --   -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
+    --   -- E.g. "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/*.md"
+    --   -- refer to `:h file-pattern` for more examples
+    --   "BufReadPre path/to/my-vault/*.md",
+    --   "BufNewFile path/to/my-vault/*.md",
+    -- },
+    dependencies = {
+      -- Required.
+      'nvim-lua/plenary.nvim',
+
+      -- see below for full list of optional dependencies 👇
+    },
+    opts = {
+      workspaces = {
+        {
+          name = 'personal',
+          path = 'C:/Obsidian/Personal',
+        },
+        {
+          name = 'work',
+          path = 'C:/Obsidian/Work',
+        },
+      },
+
+      -- see below for full list of options 👇
+    },
+  },
+  {
+    'Davidyz/VectorCode',
+    version = '*', -- optional, depending on whether you're on nightly or release
+    dependencies = { 'nvim-lua/plenary.nvim' },
+  },
+  {
+    'olimorris/codecompanion.nvim',
+    opts = {
+      extensions = {
+        vectorcode = {
+          opts = { add_tool = true, add_slash_command = true, tool_opts = {} },
+        },
+      },
+      strategies = {
+        chat = {
+          adapter = 'kkadapt', -- Custom adapter name
+          inline = 'kkadapt',
+        },
+      },
+      adapters = {
+        kkadapt = function()
+          return require('codecompanion.adapters').extend('ollama', {
+            name = 'kkadapt', -- Distinct name for the adapter
+            schema = {
+              model = {
+                default = 'codellama:7b-instruct', -- Replace with your desired model
+              },
+            },
+          })
+        end,
+      },
+      opts = {
+        log_level = 'DEBUG',
+      },
+      display = {
+        diff = {
+          enabled = true,
+          close_chat_at = 240,
+          layout = 'vertical',
+          opts = { 'internal', 'filler', 'closeoff', 'algorithm:patience', 'followwrap', 'linematch:120' },
+          provider = 'default',
+        },
+      },
+    },
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-treesitter/nvim-treesitter',
+    },
+  },
+  {
     'stevearc/oil.nvim',
     ---@module 'oil'
     ---@type oil.SetupOpts
@@ -346,6 +429,7 @@ require('lazy').setup({
       end,
     },
   },
+
   { -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
@@ -1145,8 +1229,23 @@ require('lazy').setup({
     },
   },
 })
+
+vim.opt.foldmethod = 'expr'
+vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+vim.opt.foldcolumn = '0'
+vim.opt.foldtext = ''
+vim.opt.foldlevel = 99
+vim.opt.foldlevelstart = 1
+vim.opt.foldnestmax = 4
+
 vim.treesitter.language.register('apex', { 'apex', 'apexcode' })
 vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
+vim.keymap.set({ 'n', 'v' }, '<C-a>', '<cmd>CodeCompanionActions<cr>', { noremap = true, silent = true })
+vim.keymap.set({ 'n', 'v' }, '<LocalLeader>a', '<cmd>CodeCompanionChat Toggle<cr>', { noremap = true, silent = true })
+vim.keymap.set('v', 'ga', '<cmd>CodeCompanionChat Add<cr>', { noremap = true, silent = true })
+
+-- Expand 'cc' into 'CodeCompanion' in the command line
+vim.cmd [[cab cc CodeCompanion]]
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
