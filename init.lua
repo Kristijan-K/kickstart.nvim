@@ -455,9 +455,10 @@ require('lazy').setup({
   },
   {
     {
-      dir = '~/AppData/Local/nvim/lua/custom/plugins/present.nvim',
+      dir = '~/AppData/Local/nvim/lua/custom/plugins/kk-marp.nvim',
+
       config = function()
-        require 'present'
+        vim.keymap.set('n', '<leader>mp', '<cmd>KKMarpStart<CR><CR>', { desc = 'Start presentation' })
       end,
     },
   },
@@ -1300,15 +1301,6 @@ vim.opt.foldcolumn = '0'
 vim.opt.foldtext = ''
 vim.opt.foldlevel = 99
 vim.opt.foldnestmax = 4
---[[
-  vim.opt.foldmethod = 'expr'
-  vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
-  vim.opt.foldcolumn = '0'
-  vim.opt.foldtext = ''
-  vim.opt.foldlevel = 99
-  vim.opt.foldlevelstart = 1
-  vim.opt.foldnestmax = 4
-]]
 vim.treesitter.language.register('apex', { 'apex', 'apexcode' })
 vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
