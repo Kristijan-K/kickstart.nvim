@@ -216,8 +216,6 @@ require('lazy').setup({
   {
     'epwalsh/obsidian.nvim',
     version = '*', -- recommended, use latest release instead of latest commit
-    lazy = true,
-    ft = 'markdown',
     -- Replace the above line with this if you only want to load obsidian.nvim for markdown files in your vault:
     -- event = {
     --   -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
@@ -226,74 +224,108 @@ require('lazy').setup({
     --   "BufReadPre path/to/my-vault/*.md",
     --   "BufNewFile path/to/my-vault/*.md",
     -- },
+    --
     dependencies = {
-      -- Required.
       'nvim-lua/plenary.nvim',
-
-      -- see below for full list of optional dependencies 👇
+      'hrsh7th/nvim-cmp',
+      'hrsh7th/cmp-buffer',
+      'hrsh7th/cmp-path',
     },
     opts = {
       workspaces = {
         {
-          name = 'personal',
-          path = 'C:/Obsidian/Personal',
+          name = 'workspace',
+          path = '~/Obsidian',
+          overrides = {
+            notes_subdir = '00-Inbox',
+          },
         },
-        {
-          name = 'work',
-          path = 'C:/Obsidian/Work',
+      },
+      daily_notes = {
+        folder = 'Daily', -- This places daily notes in the Daily/ folder
+        date_format = '%Y-%m-%d', -- Default filename format
+        alias_format = '%A, %B %-d, %Y', -- Optional: display alias like "Tuesday, May 7, 2025"
+        template = 'Daily.md', -- Optional: template filename (inside Templates/)
+      },
+
+      -- Optional: template directory and handling
+      templates = {
+        subdir = 'Templates', -- or "SharedTemplates" if that's what you're using
+        date_format = '%Y-%m-%d',
+      },
+
+      ui = {
+        enable = true, -- set to false to disable all additional syntax features
+        update_debounce = 200, -- update delay after a text change (in milliseconds)
+        max_file_length = 5000, -- disable UI features for files with more than this many lines
+        -- Define how various check-boxes are displayed
+        checkboxes = {
+          -- NOTE: the 'char' value has to be a single character, and the highlight groups are defined below.
+          [' '] = { char = '☐ ', hl_group = 'ObsidianTodo' },
+          ['x'] = { char = '✔ ', hl_group = 'ObsidianDone' },
+          ['>'] = { char = '➜ ', hl_group = 'ObsidianRightArrow' },
+          ['!'] = { char = '⚠️', hl_group = 'ObsidianImportant' },
+          -- Replace the above with this if you don't have a patched font:
+          -- [' '] = { char = '☐', hl_group = 'ObsidianTodo' },
+          -- ['x'] = { char = '✔', hl_group = 'ObsidianDone' },
+
+          -- You can also add more custom ones...
+        },
+        -- Use bullet marks for non-checkbox lists.
+        bullets = { char = '•', hl_group = 'ObsidianBullet' },
+        -- external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
+        -- Replace the above with this if you don't have a patched font:
+        external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
+        reference_text = { hl_group = 'ObsidianRefText' },
+        highlight_text = { hl_group = 'ObsidianHighlightText' },
+        tags = { hl_group = 'ObsidianTag' },
+        block_ids = { hl_group = 'ObsidianBlockID' },
+        hl_groups = {
+          -- The options are passed directly to `vim.api.nvim_set_hl()`. See `:help nvim_set_hl`.
+          ObsidianTodo = { bold = true, fg = '#f78c6c' },
+          ObsidianDone = { bold = true, fg = '#89ddff' },
+          ObsidianRightArrow = { bold = true, fg = '#f78c6c' },
+          ObsidianTilde = { bold = true, fg = '#ff5370' },
+          ObsidianImportant = { bold = true, fg = '#d73128' },
+          ObsidianBullet = { bold = true, fg = '#89ddff' },
+          ObsidianRefText = { underline = true, fg = '#c792ea' },
+          ObsidianExtLinkIcon = { fg = '#c792ea' },
+          ObsidianTag = { italic = true, fg = '#89ddff' },
+          ObsidianBlockID = { italic = true, fg = '#89ddff' },
+          ObsidianHighlightText = { bg = '#75662e' },
+        },
+      },
+      mappings = {
+        -- Overrides the 'gf' mapping to work on markdown/wiki links within your vault.
+        ['gf'] = {
+          action = function()
+            return require('obsidian').util.gf_passthrough()
+          end,
+          opts = { noremap = false, expr = true, buffer = true },
+        },
+        -- Toggle check-boxes.
+        ['<leader>ch'] = {
+          action = function()
+            return require('obsidian').util.toggle_checkbox()
+          end,
+          opts = { buffer = true },
+        },
+        -- Smart action depending on context, either follow link or toggle checkbox.
+        ['<cr>'] = {
+          action = function()
+            return require('obsidian').util.smart_action()
+          end,
+          opts = { buffer = true, expr = true },
         },
       },
 
+      completion = {
+        -- Set to false to disable completion.
+        nvim_cmp = true,
+        -- Trigger completion at 2 chars.
+        min_chars = 2,
+      },
       -- see below for full list of options 👇
-    },
-  },
-  {
-    'Davidyz/VectorCode',
-    version = '*', -- optional, depending on whether you're on nightly or release
-    dependencies = { 'nvim-lua/plenary.nvim' },
-  },
-  {
-    'olimorris/codecompanion.nvim',
-    opts = {
-      extensions = {
-        vectorcode = {
-          opts = { add_tool = true, add_slash_command = true, tool_opts = {} },
-        },
-      },
-      strategies = {
-        chat = {
-          adapter = 'kkadapt', -- Custom adapter name
-          inline = 'kkadapt',
-        },
-      },
-      adapters = {
-        kkadapt = function()
-          return require('codecompanion.adapters').extend('ollama', {
-            name = 'kkadapt', -- Distinct name for the adapter
-            schema = {
-              model = {
-                default = 'codellama:7b-instruct', -- Replace with your desired model
-              },
-            },
-          })
-        end,
-      },
-      opts = {
-        log_level = 'DEBUG',
-      },
-      display = {
-        diff = {
-          enabled = true,
-          close_chat_at = 240,
-          layout = 'vertical',
-          opts = { 'internal', 'filler', 'closeoff', 'algorithm:patience', 'followwrap', 'linematch:120' },
-          provider = 'default',
-        },
-      },
-    },
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-      'nvim-treesitter/nvim-treesitter',
     },
   },
   {
@@ -429,7 +461,14 @@ require('lazy').setup({
       end,
     },
   },
-
+  {
+    {
+      dir = '~/AppData/Local/nvim/lua/custom/plugins/obsidian-scripts.nvim',
+      config = function()
+        require 'obsidian-scripts'
+      end,
+    },
+  },
   { -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
@@ -997,6 +1036,7 @@ require('lazy').setup({
           return 'make install_jsregexp'
         end)(),
         dependencies = {
+          'saghen/blink.compat',
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
@@ -1007,7 +1047,25 @@ require('lazy').setup({
           --   end,
           -- },
         },
-        opts = {},
+        opts = {
+          sources = {
+            default = { 'obsidian', 'obsidian_new', 'obsidian_tags' },
+            providers = {
+              obsidian = {
+                name = 'obsidian',
+                module = 'blink.compat.source',
+              },
+              obsidian_new = {
+                name = 'obsidian_new',
+                module = 'blink.compat.source',
+              },
+              obsidian_tags = {
+                name = 'obsidian_tags',
+                module = 'blink.compat.source',
+              },
+            },
+          },
+        },
       },
       'folke/lazydev.nvim',
     },
@@ -1192,9 +1250,9 @@ require('lazy').setup({
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   -- require 'kickstart.plugins.debug',
-  require 'kickstart.plugins.indent_line',
+  -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  require 'kickstart.plugins.autopairs',
+  -- require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
@@ -1229,23 +1287,33 @@ require('lazy').setup({
     },
   },
 })
-
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'markdown',
+  callback = function()
+    vim.wo.conceallevel = 2
+    vim.wo.concealcursor = 'nc' -- Conceal in normal and command mode, not insert
+  end,
+})
 vim.opt.foldmethod = 'expr'
 vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.opt.foldcolumn = '0'
 vim.opt.foldtext = ''
 vim.opt.foldlevel = 99
-vim.opt.foldlevelstart = 1
 vim.opt.foldnestmax = 4
-
+--[[
+  vim.opt.foldmethod = 'expr'
+  vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+  vim.opt.foldcolumn = '0'
+  vim.opt.foldtext = ''
+  vim.opt.foldlevel = 99
+  vim.opt.foldlevelstart = 1
+  vim.opt.foldnestmax = 4
+]]
 vim.treesitter.language.register('apex', { 'apex', 'apexcode' })
 vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
-vim.keymap.set({ 'n', 'v' }, '<C-a>', '<cmd>CodeCompanionActions<cr>', { noremap = true, silent = true })
-vim.keymap.set({ 'n', 'v' }, '<LocalLeader>a', '<cmd>CodeCompanionChat Toggle<cr>', { noremap = true, silent = true })
-vim.keymap.set('v', 'ga', '<cmd>CodeCompanionChat Add<cr>', { noremap = true, silent = true })
 
--- Expand 'cc' into 'CodeCompanion' in the command line
-vim.cmd [[cab cc CodeCompanion]]
+vim.keymap.set('n', '<leader>O', ':Oil<CR>', { desc = 'Open Oil File Explorer' })
+
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
