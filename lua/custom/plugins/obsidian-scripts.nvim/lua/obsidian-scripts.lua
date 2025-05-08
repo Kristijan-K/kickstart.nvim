@@ -96,21 +96,6 @@ local function deleteCurrentNote()
     vim.fn.rename(file, target_path)
     vim.cmd('e ' .. target_path)
 
-    -- Remove the note from the quickfix list
-    local quickfix_items = vim.fn.getqflist()
-    local updated_qflist = {}
-
-    -- Filter out the current file from quickfix list
-    for _, item in ipairs(quickfix_items) do
-      if item.filename ~= file then
-        table.insert(updated_qflist, item)
-      end
-    end
-
-    -- Update the quickfix list and refresh it
-    vim.fn.setqflist({}, 'r', { items = updated_qflist })
-    vim.cmd 'copen' -- Open quickfix window if it's not already open
-
     vim.notify('Note moved to Deleted folder: ' .. target_path, vim.log.levels.INFO)
   else
     vim.notify('Note is already in the Deleted folder', vim.log.levels.INFO)
@@ -148,20 +133,6 @@ local function moveNoteByTag()
     vim.cmd 'write'
     vim.fn.rename(file, target_path)
     vim.cmd('e ' .. target_path)
-    -- Remove the note from the quickfix list
-    local quickfix_items = vim.fn.getqflist()
-    local updated_qflist = {}
-
-    -- Filter out the current file from quickfix list
-    for _, item in ipairs(quickfix_items) do
-      if item.filename ~= file then
-        table.insert(updated_qflist, item)
-      end
-    end
-
-    -- Update the quickfix list and refresh it
-    vim.fn.setqflist({}, 'r', { items = updated_qflist })
-    vim.cmd 'copen' -- Open quickfix window if it's not already open
     vim.notify('Moved note to: ' .. target_path, vim.log.levels.INFO)
   else
     vim.notify('Note already in correct location', vim.log.levels.INFO)
