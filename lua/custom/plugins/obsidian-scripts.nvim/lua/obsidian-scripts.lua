@@ -85,7 +85,7 @@ local function deleteCurrentNote()
     return
   end
 
-  local deleted_dir = vim.fn.expand '~/Obsidian/Work/Deleted/' -- Adjust path to match your structure
+  local deleted_dir = vim.fn.expand '~/Obsidian/Deleted/' -- Adjust path to match your structure
   vim.fn.mkdir(deleted_dir, 'p') -- Ensure the Deleted folder exists
 
   local filename = vim.fn.fnamemodify(file, ':t') -- Get the filename
