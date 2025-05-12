@@ -1,22 +1,18 @@
 local function open_or_create_weekly_note()
   local Path = require 'obsidian.path'
 
-  -- Get current week info
-  local today = os.date '*t'
-  local year = today.year
-  local week = os.date '!%V' -- ISO 8601 week number (01–53)
+  -- Get current local week info (ISO 8601 week number and year)
+  local week = os.date '%V' -- ISO week number (01–53)
+  local year = os.date '%G' -- ISO week-numbering year
 
   local filename = string.format('Week-%s-%s.md', year, week)
-  local full_path = Path:new(vim.fn.expand '~/Obsidian/Weekly/' .. '/' .. filename)
+  local full_path = Path:new(vim.fn.expand('~/Obsidian/Weekly/' .. filename))
 
-  -- Check if note already exists
-  if full_path:exists() then
-    vim.cmd('e ' .. full_path.filename)
-  else
-    -- Create and open the new weekly note file
-    vim.cmd('e ' .. full_path.filename)
+  -- Open the file (create if it doesn't exist)
+  vim.cmd('e ' .. full_path.filename)
 
-    -- Insert template (after file loads)
+  -- If file is new (doesn't exist yet), insert template
+  if not full_path:exists() then
     vim.defer_fn(function()
       vim.cmd 'ObsidianTemplate Weekly.md'
     end, 50)
