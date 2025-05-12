@@ -458,6 +458,7 @@ require('lazy').setup({
       dir = '~/AppData/Local/nvim/lua/custom/plugins/kk-marp.nvim',
 
       config = function()
+        vim.keymap.set('n', '<leader>md', '<cmd>MarkdownPreview<CR><CR>', { desc = 'Start markdown preview' })
         vim.keymap.set('n', '<leader>mp', '<cmd>KKMarpStart<CR><CR>', { desc = 'Start presentation' })
       end,
     },
