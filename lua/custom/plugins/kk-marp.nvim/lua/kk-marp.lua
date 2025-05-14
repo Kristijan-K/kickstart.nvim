@@ -19,4 +19,23 @@ M.start_presentation = function()
   vim.cmd('!start "" "file:///' .. output_file .. '"')
 end
 
+M.export_presentation = function()
+  local fullpath = vim.fn.expand '%:p'
+  local dir = vim.fn.expand '%:p:h'
+  local filename_no_ext = vim.fn.expand '%:t:r'
+  local output_file = dir .. '\\' .. filename_no_ext .. '.pdf'
+
+  -- Create full marp and open commands
+  local cmd_marp = 'marp ' .. fullpath .. ' -o ' .. output_file .. ''
+  local cmd_open = 'start  ' .. output_file .. ''
+
+  -- Notify what we're about to run
+  vim.schedule(function()
+    vim.notify('Running Marp command:\n' .. cmd_marp, vim.log.levels.INFO)
+  end)
+
+  local marpOut = vim.fn.system { 'marp', '--pdf', fullpath, '-o', output_file, '--allow-local-files' }
+  vim.cmd('!start "" "file:///' .. output_file .. '"')
+end
+
 return M
