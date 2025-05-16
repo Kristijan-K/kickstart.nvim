@@ -3,7 +3,7 @@
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
--- Set to true if you have a Nerd Font installed and selected in the terminal
+-- Set to true if you have a Nerd Font installed and selected in the terminalinit
 vim.g.have_nerd_font = false
 
 -- [[ Setting options ]]
@@ -213,6 +213,122 @@ require('lazy').setup({
   {
     'ThePrimeagen/vim-be-good',
   },
+  {
+    'olimorris/codecompanion.nvim', -- The KING of AI programming
+    dependencies = {
+      'j-hui/fidget.nvim',
+      'ravitemer/codecompanion-history.nvim', -- Save and load conversation history
+      {
+        'ravitemer/mcphub.nvim', -- Manage MCP servers
+        cmd = 'MCPHub',
+        build = 'npm install -g mcp-hub@latest',
+        config = true,
+      },
+      -- { "echasnovski/mini.pick", config = true },
+      -- { "ibhagwan/fzf-lua", config = true },
+    },
+    opts = {
+      extensions = {
+        history = {
+          enabled = true,
+          opts = {
+            keymap = 'gh',
+            auto_generate_title = true,
+            continue_last_chat = false,
+            delete_on_clearing_chat = false,
+            picker = 'snacks',
+            enable_logging = false,
+            dir_to_save = vim.fn.stdpath 'data' .. '/codecompanion-history',
+          },
+        },
+        mcphub = {
+          callback = 'mcphub.extensions.codecompanion',
+          opts = {
+            make_vars = true,
+            make_slash_commands = true,
+            show_result_in_chat = true,
+          },
+        },
+      },
+      adapters = {
+        openai = function()
+          return require('codecompanion.adapters').extend('openai', {
+            opts = {
+              stream = true,
+            },
+            env = {
+              api_key = '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',
+            },
+            schema = {
+              model = {
+                default = function()
+                  return 'gpt-3.5-turbo-1106'
+                end,
+              },
+            },
+          })
+        end,
+      },
+      strategies = {
+        chat = {
+          adapter = 'openai',
+          roles = {
+            user = 'kkosu',
+          },
+          keymaps = {
+            send = {
+              modes = {
+                i = { '<C-CR>', '<C-s>' },
+              },
+            },
+            completion = {
+              modes = {
+                i = '<C-x>',
+              },
+            },
+          },
+          slash_commands = {
+            ['buffer'] = {
+              keymaps = {
+                modes = {
+                  i = '<C-b>',
+                },
+              },
+            },
+            ['help'] = {
+              opts = {
+                max_lines = 1000,
+              },
+            },
+          },
+          tools = {
+            opts = {
+              auto_submit_success = false,
+              auto_submit_errors = false,
+            },
+          },
+        },
+        inline = { adapter = 'openai' },
+      },
+      display = {
+        action_palette = {
+          provider = 'default',
+        },
+        chat = {
+          -- show_references = true,
+          -- show_header_separator = false,
+          -- show_settings = false,
+        },
+      },
+      opts = {
+        log_level = 'DEBUG',
+      },
+    },
+    init = function()
+      vim.cmd [[cab cc CodeCompanion]]
+    end,
+  },
+
   -- lazy.nvim
   {
     'folke/noice.nvim',
@@ -1382,6 +1498,8 @@ vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
 
 vim.keymap.set('n', '<leader>O', ':Oil<CR>', { desc = 'Open Oil File Explorer' })
-
+vim.keymap.set({ 'n', 'v' }, '<C-a>', '<cmd>CodeCompanionActions<cr>', { noremap = true, silent = true })
+vim.keymap.set({ 'n', 'v' }, '<LocalLeader>a', '<cmd>CodeCompanionChat Toggle<cr>', { noremap = true, silent = true })
+vim.keymap.set('v', 'ga', '<cmd>CodeCompanionChat Add<cr>', { noremap = true, silent = true })
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
