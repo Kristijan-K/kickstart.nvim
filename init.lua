@@ -3,6 +3,12 @@
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+local api_key = os.getenv 'OPENAI_API_KEY'
+if not api_key or api_key == '' then
+  error 'OPENAI_API_KEY environment variable is not set.'
+end
+
+api_key = api_key:match '^%s*(.-)%s*$'
 -- Set to true if you have a Nerd Font installed and selected in the terminalinit
 vim.g.have_nerd_font = false
 
@@ -257,7 +263,7 @@ require('lazy').setup({
               stream = true,
             },
             env = {
-              api_key = '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',
+              api_key = api_key,
             },
             schema = {
               model = {
