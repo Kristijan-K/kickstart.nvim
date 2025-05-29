@@ -268,7 +268,8 @@ require('lazy').setup({
             schema = {
               model = {
                 default = function()
-                  return 'gpt-3.5-turbo-1106'
+                  return 'gpt-4.1'
+                  -- return 'gpt-3.5-turbo-1106'
                 end,
               },
             },
@@ -1029,17 +1030,8 @@ require('lazy').setup({
           },
           single_file_support = false,
         },
-        apex_ls = {
-          cmd = {
-            'java',
-            '-jar',
-            vim.fn.expand '$HOME/apex-jorje-lsp.jar',
-          },
-          apex_jar_path = '/path/to/apex-jorje-lsp.jar',
-          apex_enable_semantic_errors = false,
-          apex_enable_completion_statistics = false,
-          filetypes = { 'apex', 'apexcode', 'cls', 'trigger' },
-        },
+        lwc_ls = {},
+        visualforce_ls = {},
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -1493,6 +1485,19 @@ vim.api.nvim_create_autocmd('FileType', {
     vim.wo.concealcursor = 'nc' -- Conceal in normal and command mode, not insert
   end,
 })
+
+require('lspconfig').apex_ls.setup {
+  cmd = {
+    'java',
+    '-jar',
+    vim.fn.expand '$HOME/apex-jorje-lsp.jar',
+  },
+  apex_jar_path = '/path/to/apex-jorje-lsp.jar',
+  apex_enable_semantic_errors = false,
+  apex_enable_completion_statistics = false,
+  filetypes = { 'apex', 'apexcode', 'cls', 'trigger' },
+}
+
 vim.opt.foldmethod = 'expr'
 vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.opt.foldcolumn = '0'
