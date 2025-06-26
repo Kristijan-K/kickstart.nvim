@@ -583,6 +583,13 @@ require('lazy').setup({
           { desc = 'Retrieve file from Salesforce' }
         )
 
+        vim.keymap.set(
+          'n',
+          '<leader>xa',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf apex run --file', keepOpen = true } .. '<CR><CR>',
+          { desc = 'Execute anonymous' }
+        )
+
         vim.keymap.set('n', '<leader>xt', '<cmd>SFExecute ' .. vim.fn.json_encode {
           path = '',
           isTest = true,
@@ -1504,8 +1511,9 @@ vim.opt.foldcolumn = '0'
 vim.opt.foldtext = ''
 vim.opt.foldlevel = 99
 vim.opt.foldnestmax = 4
-vim.treesitter.language.register('apex', { 'apex', 'apexcode' })
+vim.treesitter.language.register('apex', { 'apex', 'apexcode', 'cls' })
 vim.cmd 'au BufNewFile,BufRead *.cls :setl ft=apexcode'
+vim.cmd 'au BufNewFile,BufRead *.apex :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
 
 vim.keymap.set('n', '<leader>O', ':Oil<CR>', { desc = 'Open Oil File Explorer' })

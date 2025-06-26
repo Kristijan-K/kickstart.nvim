@@ -4,12 +4,8 @@ local function create_floating_window(opts, enter)
   if enter == nil then
     enter = false
   end
-  local width = 100
-  local height = 12
-  if opts.isTest == true then
-    width = 120
-    height = 35
-  end
+  local width = 120
+  local height = 35
   -- Center the floating window within current window
   local col = math.floor((vim.o.columns - width) / 2)
   local row = math.floor((vim.o.lines - height) / 2)
@@ -52,11 +48,6 @@ M.job_call = function(cmd, msg, config)
       return line and line ~= ''
     end, output_lines)
     local max_lines = 12
-    if config.isTest ~= true then
-      while #output_lines > max_lines do
-        table.remove(output_lines, 1) -- Remove from the front
-      end
-    end
     vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
     vim.api.nvim_set_current_win(float.win)
   end
