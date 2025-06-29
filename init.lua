@@ -601,6 +601,15 @@ require('lazy').setup({
   },
   {
     {
+      dir = '~/AppData/Local/nvim/lua/custom/plugins/apex_logs.nvim',
+
+      config = function()
+        vim.keymap.set('n', '<leader>xl', '<cmd>SFLogs<CR><CR>', { desc = 'Analyze SF Logs' })
+      end,
+    },
+  },
+  {
+    {
       dir = '~/AppData/Local/nvim/lua/custom/plugins/kk-marp.nvim',
 
       config = function()
