@@ -50,6 +50,9 @@ M.job_call = function(cmd, msg, config)
     local max_lines = 12
     vim.api.nvim_buf_set_lines(float.buf, 0, -1, false, output_lines)
     vim.api.nvim_set_current_win(float.win)
+    -- Scroll to the bottom
+    local line_count = vim.api.nvim_buf_line_count(float.buf)
+    vim.api.nvim_win_set_cursor(float.win, { line_count, 0 })
   end
 
   vim.fn.jobstart({ 'powershell.exe', '-Command', cmd }, {
