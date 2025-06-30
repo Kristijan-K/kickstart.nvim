@@ -288,6 +288,65 @@ local function extract_soql_blocks(lines, sort_mode)
 end
 
 ---@param lines string[]
+---@return string[] exception_lines
+local function extract_exception_blocks(lines)
+  local processed_unique_lines = {}
+  local seen_lines = {}
+
+  for _, line in ipairs(lines) do
+    local line_lower = line:lower()
+    if (line_lower:find 'exception' or line_lower:find 'error') and not line:find 'SOQL_EXECUTE_BEGIN' then
+      local processed_line = line
+      local first_pipe = line:find '|'
+      if first_pipe then
+        local second_pipe = line:find('|', first_pipe + 1)
+        if second_pipe then
+          processed_line = line:sub(second_pipe + 1)
+        end
+      end
+      -- Trim whitespace from the processed line for better comparison
+      processed_line = processed_line:gsub('^%s*(.-)%s*$', '%1')
+      if not seen_lines[processed_line] then
+        table.insert(processed_unique_lines, processed_line)
+        seen_lines[processed_line] = true
+      end
+    end
+  end
+
+  -- Sort by length in descending order for substring removal
+  table.sort(processed_unique_lines, function(a, b)
+    return #a > #b
+  end)
+
+  local final_exception_lines = {}
+  local final_seen_lines = {}
+
+  for _, current_line in ipairs(processed_unique_lines) do
+    local is_substring = false
+    for _, existing_line in ipairs(final_exception_lines) do
+      if existing_line:find(current_line, 1, true) then -- Check if current_line is a substring of an existing_line
+        is_substring = true
+        break
+      end
+    end
+    if not is_substring then
+      table.insert(final_exception_lines, current_line)
+    end
+  end
+
+  local indexed_exception_lines = {}
+  if #final_exception_lines == 0 then
+    table.insert(indexed_exception_lines, 'No exceptions or errors found.')
+  else
+    for i, line in ipairs(final_exception_lines) do
+      table.insert(indexed_exception_lines, string.format('%d. %s', i, line))
+    end
+  end
+
+  return indexed_exception_lines
+end
+
+---@param lines string[]
 ---@return string[] flat_lines, TreeNode[] line_map, TreeNode[] roots
 local function extract_tree_blocks(lines)
   local open_close_map = {
@@ -530,6 +589,7 @@ function M.analyzeLogs()
   local soql_lines, soql_spans = extract_soql_blocks(orig_lines, soql_sort_mode)
 
   local dml_lines, dml_spans = extract_dml_blocks(orig_lines)
+  local exception_lines = extract_exception_blocks(orig_lines)
 
   local tree_nodes
   local function render_tree_and_update_buf()
@@ -540,7 +600,7 @@ function M.analyzeLogs()
     api.nvim_buf_set_lines(tab_bufs[2], 0, -1, false, tree_lines)
   end
 
-  local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML' }
+  local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML', 'Exceptions' }
 
   for i, title in ipairs(tab_titles) do
     local buf = api.nvim_create_buf(false, true)
@@ -550,6 +610,8 @@ function M.analyzeLogs()
       api.nvim_buf_set_lines(buf, 0, -1, false, soql_lines)
     elseif i == 4 then
       api.nvim_buf_set_lines(buf, 0, -1, false, dml_lines)
+    elseif i == 5 then
+      api.nvim_buf_set_lines(buf, 0, -1, false, exception_lines)
     else
       api.nvim_buf_set_lines(buf, 0, -1, false, { 'This is the [' .. title .. '] tab.' })
     end
