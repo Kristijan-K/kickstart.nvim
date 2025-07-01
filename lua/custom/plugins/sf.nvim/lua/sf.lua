@@ -4,11 +4,10 @@ local function create_floating_window(opts, enter)
   if enter == nil then
     enter = false
   end
-  local width = 120
-  local height = 35
-  -- Center the floating window within current window
-  local col = math.floor((vim.o.columns - width) / 2)
+    local width = math.floor(vim.o.columns * 0.95)
+  local height = math.floor(vim.o.lines * 0.90)
   local row = math.floor((vim.o.lines - height) / 2)
+  local col = math.floor((vim.o.columns - width) / 2)
   -- Floating window options
   local config = {
     style = 'minimal',
