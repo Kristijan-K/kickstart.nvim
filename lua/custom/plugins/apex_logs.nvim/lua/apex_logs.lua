@@ -375,7 +375,7 @@ local function extract_exception_blocks(lines)
 end
 
 ---@param lines string[]
----@return string[] flat_lines, TreeNode[] line_map, TreeNode[] roots
+---@return table, TreeNode[]
 local function extract_tree_blocks(lines)
   local open_close_map = {
     CODE_UNIT_STARTED = { close = 'CODE_UNIT_FINISHED', extract_name = true },
@@ -402,7 +402,13 @@ local function extract_tree_blocks(lines)
   local function get_method_name(tag, line)
     if open_close_map[tag] and open_close_map[tag].extract_name then
       local parts = vim.split(line, '|')
-      return vim.trim(parts[#parts] or tag)
+      local fullName = vim.trim(parts[#parts] or tag)
+      local paren = fullName:find('%(')
+      if paren then
+        return fullName:sub(1, paren - 1) .. '()'
+      else
+        return fullName
+      end
     elseif tag == 'ENTERING_MANAGED_PKG' then
       return 'MANAGED CODE'
     elseif tag == 'SOQL_EXECUTE_BEGIN' then
@@ -551,6 +557,60 @@ local function extract_tree_blocks(lines)
     aggregate_descendants(r)
   end
 
+  -- New aggregation for identical, childless siblings
+  local function aggregate_identical_siblings_recursive(children)
+    if not children or #children == 0 then
+      return children
+    end
+
+    -- First, recurse on children of children
+    for _, child in ipairs(children) do
+      if child.children and #child.children > 0 then
+        child.children = aggregate_identical_siblings_recursive(child.children)
+      end
+    end
+
+    local aggregated_children = {}
+    local i = 1
+    while i <= #children do
+      local current_node = children[i]
+      if #current_node.children == 0 then -- Only aggregate leaf nodes
+        local group_end = i
+        while group_end + 1 <= #children and children[group_end + 1].name == current_node.name and children[group_end + 1].code_row == current_node.code_row and #children[group_end + 1].children == 0 do
+          group_end = group_end + 1
+        end
+
+        if group_end > i then
+          local total_ns = 0
+          for j = i, group_end do
+            total_ns = total_ns + ((children[j].end_ns or children[j].start_ns) - children[j].start_ns)
+          end
+          local new_node = {
+            tag = current_node.tag,
+            name = current_node.name .. ' (x' .. (group_end - i + 1) .. ')',
+            code_row = current_node.code_row,
+            start_ns = current_node.start_ns,
+            end_ns = current_node.start_ns + total_ns,
+            children = {},
+            parent = current_node.parent,
+            expanded = false,
+            line_idx = current_node.line_idx,
+          }
+          table.insert(aggregated_children, new_node)
+          i = group_end + 1
+        else
+          table.insert(aggregated_children, current_node)
+          i = i + 1
+        end
+      else
+        table.insert(aggregated_children, current_node)
+        i = i + 1
+      end
+    end
+    return aggregated_children
+  end
+  roots = aggregate_identical_siblings_recursive(roots)
+
   -- Compute durations for all nodes, collect them for "10 Longest"
   local durations = {}
   local function collect_durations(node)
@@ -577,38 +637,7 @@ local function extract_tree_blocks(lines)
     table.insert(longest, string.format('%2d. %s%s | %.2fms', idx, node.name, cr, node.duration))
   end
 
-  -- Render (with collapsible/expandable support)
-  local function render(node, depth, out_lines, line_map)
-    table.insert(line_map, node)
-    local cr = node.code_row and (' [' .. node.code_row .. ']') or ''
-    local indent = string.rep('\t', depth)
-    local mark = (#node.children > 0) and (node.expanded and '▼ ' or '▶ ') or '  '
-    local line = indent .. mark .. node.name .. cr .. string.format(' | %.2fms', node.duration)
-    table.insert(out_lines, line)
-    if node.expanded and node.children then
-      for _, child in ipairs(node.children) do
-        render(child, depth + 1, out_lines, line_map)
-      end
-    end
-  end
-
-  local flat, line_map = {}, {}
-  if #longest > 0 then
-    for _, l in ipairs(longest) do
-      table.insert(flat, l)
-    end
-    table.insert(flat, '---- 10 Longest Operations ----')
-    table.insert(line_map, { is_dummy = true })
-  end
-  for _, n in ipairs(roots) do
-    render(n, 0, flat, line_map)
-  end
-  if #flat == 0 then
-    table.insert(flat, 'No method stack information found.')
-    table.insert(line_map, {})
-  end
-
-  return flat, line_map, roots
+  return longest, roots
 end
 
 function M.analyzeLogs()
@@ -625,14 +654,54 @@ function M.analyzeLogs()
   local dml_lines, dml_spans = extract_dml_blocks(orig_lines)
   local exception_lines = extract_exception_blocks(orig_lines)
 
-  local tree_nodes
-  local function render_tree_and_update_buf()
-    local lines, map, nodes = extract_tree_blocks(orig_lines)
-    tree_nodes = nodes
-    tree_lines = lines
-    tree_line_map = map
+  -- Tree state
+  local tree_longest, tree_roots
+  local tree_lines, tree_line_map
+
+  local function render_tree()
+    local out_lines, out_map = {}, {}
+
+    local function render(node, depth)
+      table.insert(out_map, node)
+      local cr = node.code_row and (' [' .. node.code_row .. ']') or ''
+      local indent = string.rep('  ', depth)
+      local mark = (#node.children > 0) and (node.expanded and '▼ ' or '▶ ') or '  '
+      local line = indent .. mark .. node.name .. cr .. string.format(' | %.2fms', node.duration)
+      table.insert(out_lines, line)
+      if node.expanded and node.children then
+        for _, child in ipairs(node.children) do
+          render(child, depth + 1)
+        end
+      end
+    end
+
+    if #tree_longest > 0 then
+      for _, l in ipairs(tree_longest) do
+        table.insert(out_lines, l)
+        table.insert(out_map, { is_dummy = true })
+      end
+      table.insert(out_lines, '---- 10 Longest Operations ----')
+      table.insert(out_map, { is_dummy = true })
+    end
+    for _, n in ipairs(tree_roots) do
+      render(n, 0)
+    end
+    if #out_lines == 0 then
+      table.insert(out_lines, 'No method stack information found.')
+      table.insert(out_map, {})
+    end
+    return out_lines, out_map
+  end
+
+  local function update_tree_view()
+    local new_lines, new_map = render_tree()
+    tree_lines = new_lines
+    tree_line_map = new_map
     api.nvim_buf_set_lines(tab_bufs[2], 0, -1, false, tree_lines)
   end
+
+  -- Initial tree creation
+  tree_longest, tree_roots = extract_tree_blocks(orig_lines)
 
   local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML', 'Exceptions' }
 
@@ -640,6 +709,12 @@ function M.analyzeLogs()
     local buf = api.nvim_create_buf(false, true)
     if i == 1 then
       api.nvim_buf_set_lines(buf, 0, -1, false, user_debug_lines)
+    elseif i == 2 then
+      -- Initial render for tree view
+      local initial_tree_lines, initial_tree_map = render_tree()
+      tree_lines = initial_tree_lines
+      tree_line_map = initial_tree_map
+      api.nvim_buf_set_lines(buf, 0, -1, false, tree_lines)
     elseif i == 3 then
       api.nvim_buf_set_lines(buf, 0, -1, false, soql_lines)
     elseif i == 4 then
@@ -652,32 +727,24 @@ function M.analyzeLogs()
     tab_bufs[i] = buf
   end
 
-  render_tree_and_update_buf()
-
   api.nvim_buf_set_keymap(tab_bufs[2], 'n', 'z', '', {
     noremap = true,
     nowait = true,
     callback = function()
-      local cur_line = vim.api.nvim_win_get_cursor(win)[1]
+      local win = api.nvim_get_current_win()
+      local cur_line = api.nvim_win_get_cursor(win)[1]
       local node = tree_line_map[cur_line]
-      if not node or node.is_dummy then
+      if not node or node.is_dummy or not node.children or #node.children == 0 then
         return
       end
-      -- Collapse/expand logic: toggle parent if this isn't root or dummy
-      if node.parent then
-        node.parent.expanded = not node.parent.expanded
-        render_tree_and_update_buf()
-        -- Set cursor to parent line if collapsed, otherwise stay
-        for i, n in ipairs(tree_line_map) do
-          if n == (node.parent.expanded and node or node.parent) then
-            api.nvim_win_set_cursor(win, { i, 0 })
-            break
-          end
+      node.expanded = not node.expanded
+      update_tree_view()
+      -- After re-rendering, the cursor might be off. We need to find the new line of the node.
+      for i, n in ipairs(tree_line_map) do
+        if n == node then
+          api.nvim_win_set_cursor(win, { i, 0 })
+          break
         end
-      elseif node.children and #node.children > 0 then
-        -- Root line: allow toggle on self
-        node.expanded = not node.expanded
-        render_tree_and_update_buf()
       end
     end,
   })
@@ -737,7 +804,8 @@ function M.analyzeLogs()
   end
 
   local function refresh_tree_buf()
-    render_tree_and_update_buf()
+    tree_longest, tree_roots = extract_tree_blocks(orig_lines)
+    update_tree_view()
   end
 
   local function switch_tab(idx)
