@@ -506,17 +506,7 @@ require('lazy').setup({
     end,
     ft = { 'markdown', 'plantuml' },
   },
-  {
-    'ahmedkhalf/project.nvim',
-    config = function()
-      require('project_nvim').setup {
-        -- your configuration comes here
-        -- or leave it empty to use the default settings
-        -- refer to the configuration section below
-        patterns = { '.git', 'Makefile', '*.sln', 'build/env.sh', 'sfdx-project.json' },
-      }
-    end,
-  },
+
   {
     'nvimtools/none-ls.nvim', -- configure formatters & linters
     event = { 'BufReadPre', 'BufNewFile' },
@@ -762,7 +752,6 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
-      pcall(require('telescope').load_extension, 'projects')
       -- See `:help telescope.builtin`
 
       local builtin = require 'telescope.builtin'
@@ -777,7 +766,6 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
-      vim.keymap.set('n', '<leader>sp', require('telescope').extensions.projects.projects, { desc = 'Telescope: Project Repo List' })
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
         -- You can pass additional configuration to Telescope to change the theme, layout, etc.
