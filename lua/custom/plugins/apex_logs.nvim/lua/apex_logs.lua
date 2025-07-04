@@ -15,6 +15,8 @@
 ---@field expanded? boolean
 ---@field line_idx integer
 ---@field is_dummy? boolean
+---@field soql_count? integer
+---@field dml_count? integer
 
 local M = {}
 local api = vim.api
@@ -27,6 +29,7 @@ end
 
 local function ensure_teal_hl()
   vim.cmd 'highlight default ApexLogTeal guifg=#20B2AA ctermfg=37'
+  vim.cmd 'highlight default ApexLogRed guifg=#FF0000 ctermfg=1'
 end
 
 ---@param lines string[]
@@ -403,7 +406,7 @@ local function extract_tree_blocks(lines)
     if open_close_map[tag] and open_close_map[tag].extract_name then
       local parts = vim.split(line, '|')
       local fullName = vim.trim(parts[#parts] or tag)
-      local paren = fullName:find('%(')
+      local paren = fullName:find '%('
       if paren then
         return fullName:sub(1, paren - 1) .. '()'
       else
@@ -464,10 +467,17 @@ local function extract_tree_blocks(lines)
         parent = stack[#stack],
         line_idx = i,
         expanded = true,
+        soql_count = 0, -- Initialize SOQL count
+        dml_count = 0, -- Initialize DML count
       }
       table.insert(nodes, node)
       if node.parent then
         table.insert(node.parent.children, node)
+      end
+      if event_tag == 'SOQL_EXECUTE_BEGIN' then
+        node.soql_count = node.soql_count + 1
+      elseif event_tag == 'DML_BEGIN' then
+        node.dml_count = node.dml_count + 1
       end
       if open_close_map[event_tag].close then
         table.insert(stack, node)
@@ -576,7 +586,12 @@ local function extract_tree_blocks(lines)
       local current_node = children[i]
       if #current_node.children == 0 then -- Only aggregate leaf nodes
         local group_end = i
-        while group_end + 1 <= #children and children[group_end + 1].name == current_node.name and children[group_end + 1].code_row == current_node.code_row and #children[group_end + 1].children == 0 do
+        while
+          group_end + 1 <= #children
+          and children[group_end + 1].name == current_node.name
+          and children[group_end + 1].code_row == current_node.code_row
+          and #children[group_end + 1].children == 0
+        do
           group_end = group_end + 1
         end
 
@@ -622,8 +637,20 @@ local function extract_tree_blocks(lines)
       end
     end
   end
+
+  local function aggregate_soql_dml(node)
+    if node.children then
+      for _, child in ipairs(node.children) do
+        aggregate_soql_dml(child)
+        node.soql_count = (node.soql_count or 0) + (child.soql_count or 0)
+        node.dml_count = (node.dml_count or 0) + (child.dml_count or 0)
+      end
+    end
+  end
+
   for _, r in ipairs(roots) do
     collect_durations(r)
+    aggregate_soql_dml(r)
   end
   table.sort(durations, function(a, b)
     return a.ms > b.ms
@@ -643,6 +670,7 @@ end
 function M.analyzeLogs()
   ensure_teal_hl()
   local orig_lines = api.nvim_buf_get_lines(0, 0, -1, false)
+  local ns = api.nvim_create_namespace 'apex_log_teal'
 
   local tab_bufs = {}
   local sort_modes = { 'execs', 'rows', 'ms' }
@@ -659,14 +687,24 @@ function M.analyzeLogs()
   local tree_lines, tree_line_map
 
   local function render_tree()
-    local out_lines, out_map = {}, {}
+    local out_lines, out_map, out_highlights = {}, {}, {}
 
     local function render(node, depth)
       table.insert(out_map, node)
       local cr = node.code_row and (' [' .. node.code_row .. ']') or ''
-      local indent = string.rep('  ', depth)
+      local indent = string.rep(' ', depth)
       local mark = (#node.children > 0) and (node.expanded and '▼ ' or '▶ ') or '  '
-      local line = indent .. mark .. node.name .. cr .. string.format(' | %.2fms', node.duration)
+      local soql_dml_info = ''
+      if (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0) then
+        soql_dml_info = string.format(' (SOQL:%d DML:%d)', node.soql_count or 0, node.dml_count or 0)
+      end
+      local line = indent .. mark .. node.name .. cr .. soql_dml_info .. string.format(' | %.2fms', node.duration)
+      -- Store the highlight information for later application
+      if (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0) then
+        local start_col = #indent + #mark + #node.name + #cr + 1 -- +1 for the space before (SOQL:...
+        local end_col = start_col + #soql_dml_info -1
+        table.insert(out_highlights, { line_idx = #out_lines, start_col = start_col, end_col = end_col, hl_group = 'ApexLogRed' })
+      end
       table.insert(out_lines, line)
       if node.expanded and node.children then
         for _, child in ipairs(node.children) do
@@ -690,14 +728,19 @@ function M.analyzeLogs()
       table.insert(out_lines, 'No method stack information found.')
       table.insert(out_map, {})
     end
-    return out_lines, out_map
+    return out_lines, out_map, out_highlights
   end
 
   local function update_tree_view()
-    local new_lines, new_map = render_tree()
+    local new_lines, new_map, new_highlights = render_tree()
     tree_lines = new_lines
     tree_line_map = new_map
     api.nvim_buf_set_lines(tab_bufs[2], 0, -1, false, tree_lines)
+    -- Apply highlights after setting lines
+    api.nvim_buf_clear_namespace(tab_bufs[2], ns, 0, -1)
+    for _, hl in ipairs(new_highlights) do
+      api.nvim_buf_add_highlight(tab_bufs[2], ns, hl.hl_group, hl.line_idx, hl.start_col, hl.end_col)
+    end
   end
 
   -- Initial tree creation
@@ -711,10 +754,15 @@ function M.analyzeLogs()
       api.nvim_buf_set_lines(buf, 0, -1, false, user_debug_lines)
     elseif i == 2 then
       -- Initial render for tree view
-      local initial_tree_lines, initial_tree_map = render_tree()
+      local initial_tree_lines, initial_tree_map, initial_tree_highlights = render_tree()
       tree_lines = initial_tree_lines
       tree_line_map = initial_tree_map
       api.nvim_buf_set_lines(buf, 0, -1, false, tree_lines)
+      -- Apply initial highlights
+      api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+      for _, hl in ipairs(initial_tree_highlights) do
+        api.nvim_buf_add_highlight(buf, ns, hl.hl_group, hl.line_idx, hl.start_col, hl.end_col)
+      end
     elseif i == 3 then
       api.nvim_buf_set_lines(buf, 0, -1, false, soql_lines)
     elseif i == 4 then
@@ -746,6 +794,43 @@ function M.analyzeLogs()
           break
         end
       end
+    end,
+  })
+
+  api.nvim_buf_set_keymap(tab_bufs[2], 'n', 'Z', '', {
+    noremap = true,
+    nowait = true,
+    callback = function()
+      local any_collapsed = false
+      local function find_any_collapsed(nodes)
+        for _, node in ipairs(nodes) do
+          if any_collapsed then
+            return
+          end
+          if #node.children > 0 and not node.expanded then
+            any_collapsed = true
+            return
+          end
+          if node.children and #node.children > 0 then
+            find_any_collapsed(node.children)
+          end
+        end
+      end
+      find_any_collapsed(tree_roots)
+
+      local new_state = any_collapsed
+      local function set_all(nodes, state)
+        for _, node in ipairs(nodes) do
+          if #node.children > 0 then
+            node.expanded = state
+          end
+          if node.children and #node.children > 0 then
+            set_all(node.children, state)
+          end
+        end
+      end
+      set_all(tree_roots, new_state)
+      update_tree_view()
     end,
   })
 
