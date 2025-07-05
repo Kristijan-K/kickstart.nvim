@@ -646,6 +646,7 @@ local function extract_tree_blocks(lines)
         node.dml_count = (node.dml_count or 0) + (child.dml_count or 0)
       end
     end
+    node.has_soql_or_dml = (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0)
   end
 
   for _, r in ipairs(roots) do
@@ -685,11 +686,34 @@ function M.analyzeLogs()
   -- Tree state
   local tree_longest, tree_roots
   local tree_lines, tree_line_map
+  local hide_empty_nodes = false
+
+  local function filter_tree_nodes(nodes)
+    local filtered = {}
+    for _, node in ipairs(nodes) do
+      local has_soql_or_dml = (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0)
+      if hide_empty_nodes and not has_soql_or_dml then
+        -- Skip this node if filtering and it has no SOQL/DML
+      else
+        -- Recursively filter children
+        node.children = filter_tree_nodes(node.children)
+        table.insert(filtered, node)
+      end
+    end
+    return filtered
+  end
 
   local function render_tree()
     local out_lines, out_map, out_highlights = {}, {}, {}
+    local current_tree_roots = tree_roots
+    if hide_empty_nodes then
+      current_tree_roots = filter_tree_nodes(vim.deepcopy(tree_roots)) -- Deep copy to avoid modifying original tree_roots
+    end
 
     local function render(node, depth)
+      if hide_empty_nodes and not node.has_soql_or_dml then
+        return
+      end
       table.insert(out_map, node)
       local cr = node.code_row and (' [' .. node.code_row .. ']') or ''
       local indent = string.rep(' ', depth)
@@ -972,6 +996,14 @@ function M.analyzeLogs()
         nowait = true,
         callback = function()
           soql_truncate_where = not soql_truncate_where
+          refresh_tree_buf()
+        end,
+      })
+      api.nvim_buf_set_keymap(buf, 'n', 's', '', {
+        noremap = true,
+        nowait = true,
+        callback = function()
+          hide_empty_nodes = not hide_empty_nodes
           refresh_tree_buf()
         end,
       })
