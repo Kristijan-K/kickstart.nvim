@@ -699,17 +699,11 @@ local function extract_node_counts(roots)
       end
 
       if not counts[name] then
-        counts[name] = { total_count = 0, total_soql = 0, total_own_soql = 0, total_dml = 0, total_own_dml = 0 }
+        counts[name] = { total_count = 0, total_own_soql = 0, total_own_dml = 0 }
       end
       counts[name].total_count = counts[name].total_count + 1
-      if counts[name].total_soql == 0 then
-        counts[name].total_soql = (node.soql_count or 0)
-      end
       if counts[name].total_own_soql == 0 then
         counts[name].total_own_soql = (node.own_soql_count or 0)
-      end
-      if counts[name].total_dml == 0 then
-        counts[name].total_dml = (node.dml_count or 0)
       end
       if counts[name].total_own_dml == 0 then
         counts[name].total_own_dml = (node.own_dml_count or 0)
@@ -737,7 +731,7 @@ local function extract_node_counts(roots)
 
   local lines = {}
   for i, item in ipairs(sorted_counts) do
-    table.insert(lines, string.format('%d. %s: %d (SOQL:%d DML:%d) (SOQL:%d DML:%d)', i, item.name, item.total_count, item.total_soql, item.total_dml, item.total_own_soql, item.total_own_dml))
+    table.insert(lines, string.format('%d. %s: %d (Own SOQL:%d Own DML:%d)', i, item.name, item.total_count, item.total_own_soql, item.total_own_dml))
   end
 
   if #lines == 0 then
