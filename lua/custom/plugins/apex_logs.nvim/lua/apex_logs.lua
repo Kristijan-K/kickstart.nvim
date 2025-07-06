@@ -738,25 +738,31 @@ local function extract_node_counts(roots, soql_truncate_flag, soql_truncate_wher
   local lines = {}
   local highlight_spans = {}
   for i, item in ipairs(sorted_counts) do
-    local line_str = string.format('%d. %s: %d (Own SOQL:%d Own DML:%d)', i, item.name, item.total_count, item.total_own_soql, item.total_own_dml)
+    local soql_dml_part = ''
+    if item.total_own_soql > 0 or item.total_own_dml > 0 then
+      soql_dml_part = string.format(' (Own SOQL:%d Own DML:%d)', item.total_own_soql, item.total_own_dml)
+    end
+    local line_str = string.format('%d. %s: %d%s', i, item.name, item.total_count, soql_dml_part)
     table.insert(lines, line_str)
 
     local current_line_idx = #lines - 1
 
     -- Calculate highlight for Own SOQL
-    local soql_start_pattern = '(Own SOQL:'
-    local soql_start_col = line_str:find(soql_start_pattern, 1, true)
-    if soql_start_col then
-      local soql_end_col = soql_start_col + #soql_start_pattern + #tostring(item.total_own_soql) - 1
-      table.insert(highlight_spans, { line = current_line_idx, from = soql_start_col - 1, to = soql_end_col, hl_group = 'ApexLogTeal' })
+    if item.total_own_soql > 0 then
+      local soql_text = string.format('Own SOQL:%d', item.total_own_soql)
+      local soql_start_col, soql_end_col_inclusive = line_str:find(soql_text, 1, true)
+      if soql_start_col then
+        table.insert(highlight_spans, { line = current_line_idx, from = soql_start_col - 1, to = soql_end_col_inclusive, hl_group = 'ApexLogTeal' })
+      end
     end
 
     -- Calculate highlight for Own DML
-    local dml_start_pattern = 'Own DML:'
-    local dml_start_col = line_str:find(dml_start_pattern, 1, true)
-    if dml_start_col then
-      local dml_end_col = dml_start_col + #dml_start_pattern + #tostring(item.total_own_dml) - 1
-      table.insert(highlight_spans, { line = current_line_idx, from = dml_start_col - 1, to = dml_end_col, hl_group = 'ApexLogTeal' })
+    if item.total_own_dml > 0 then
+      local dml_text = string.format('Own DML:%d', item.total_own_dml)
+      local dml_start_col, dml_end_col_inclusive = line_str:find(dml_text, 1, true)
+      if dml_start_col then
+        table.insert(highlight_spans, { line = current_line_idx, from = dml_start_col - 1, to = dml_end_col_inclusive, hl_group = 'ApexLogTeal' })
+      end
     end
   end
 
@@ -888,7 +894,15 @@ function M.analyzeLogs()
 
   -- Initial tree creation
   tree_longest, tree_roots = extract_tree_blocks(orig_lines)
-  local node_count_lines, node_count_spans = extract_node_counts(tree_roots, soql_truncate, soql_truncate_where)
+  local node_count_lines, node_count_spans
+
+  local function refresh_node_counts_buf()
+    node_count_lines, node_count_spans = extract_node_counts(tree_roots, soql_truncate, soql_truncate_where)
+    api.nvim_buf_set_lines(tab_bufs[6], 0, -1, false, node_count_lines)
+    if current_tab == 6 then
+      add_highlights(6)
+    end
+  end
 
   local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML', 'Exceptions', 'Node Counts' }
 
@@ -905,13 +919,15 @@ function M.analyzeLogs()
     elseif i == 5 then
       api.nvim_buf_set_lines(buf, 0, -1, false, exception_lines)
     elseif i == 6 then
-      api.nvim_buf_set_lines(buf, 0, -1, false, node_count_lines)
-      node_count_spans = node_count_spans
+      -- Handled by refresh_node_counts_buf()
     else
       api.nvim_buf_set_lines(buf, 0, -1, false, { 'This is the [' .. title .. '] tab.' })
     end
     tab_bufs[i] = buf
   end
+
+  -- Initial call for Node Counts tab
+  refresh_node_counts_buf()
 
   api.nvim_buf_set_keymap(tab_bufs[2], 'n', 'z', '', {
     noremap = true,
@@ -1044,6 +1060,8 @@ function M.analyzeLogs()
     add_highlights(current_tab)
     if idx == 2 then
       update_tree_view()
+    elseif idx == 6 then
+      refresh_node_counts_buf()
     end
   end
 
@@ -1095,6 +1113,7 @@ function M.analyzeLogs()
           soql_truncate = not soql_truncate
           refresh_soql_buf()
           refresh_tree_buf()
+          refresh_node_counts_buf()
         end,
       })
     elseif i == 2 or i == 6 then
@@ -1106,6 +1125,7 @@ function M.analyzeLogs()
           soql_truncate = not soql_truncate
           refresh_tree_buf()
           refresh_soql_buf()
+          refresh_node_counts_buf()
         end,
       })
       api.nvim_buf_set_keymap(buf, 'n', 'T', '', {
@@ -1114,6 +1134,8 @@ function M.analyzeLogs()
         callback = function()
           soql_truncate_where = not soql_truncate_where
           refresh_tree_buf()
+          refresh_node_counts_buf()
+          refresh_node_counts_buf()
         end,
       })
       api.nvim_buf_set_keymap(buf, 'n', 's', '', {
