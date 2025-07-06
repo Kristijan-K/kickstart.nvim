@@ -1051,7 +1051,11 @@ function M.analyzeLogs()
     add_highlights(current_tab)
     if idx == 2 then
       update_tree_view()
-    elseif idx == 6 then
+      vim.wo[win].wrap = false
+    else
+      vim.wo[win].wrap = true
+    end
+    if idx == 6 then
       refresh_node_counts_buf()
     end
   end
