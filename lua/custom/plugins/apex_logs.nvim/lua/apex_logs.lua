@@ -739,30 +739,21 @@ local function extract_node_counts(roots, soql_truncate_flag, soql_truncate_wher
   local highlight_spans = {}
   for i, item in ipairs(sorted_counts) do
     local soql_dml_part = ''
+    local soql_dml_part_start_col = 0
+    local soql_dml_part_end_col = 0
+
     if item.total_own_soql > 0 or item.total_own_dml > 0 then
       soql_dml_part = string.format(' (Own SOQL:%d Own DML:%d)', item.total_own_soql, item.total_own_dml)
+      soql_dml_part_start_col = #string.format('%d. %s: %d', i, item.name, item.total_count) + 1
+      soql_dml_part_end_col = soql_dml_part_start_col + #soql_dml_part - 1
     end
     local line_str = string.format('%d. %s: %d%s', i, item.name, item.total_count, soql_dml_part)
     table.insert(lines, line_str)
 
     local current_line_idx = #lines - 1
 
-    -- Calculate highlight for Own SOQL
-    if item.total_own_soql > 0 then
-      local soql_text = string.format('Own SOQL:%d', item.total_own_soql)
-      local soql_start_col, soql_end_col_inclusive = line_str:find(soql_text, 1, true)
-      if soql_start_col then
-        table.insert(highlight_spans, { line = current_line_idx, from = soql_start_col - 1, to = soql_end_col_inclusive, hl_group = 'ApexLogTeal' })
-      end
-    end
-
-    -- Calculate highlight for Own DML
-    if item.total_own_dml > 0 then
-      local dml_text = string.format('Own DML:%d', item.total_own_dml)
-      local dml_start_col, dml_end_col_inclusive = line_str:find(dml_text, 1, true)
-      if dml_start_col then
-        table.insert(highlight_spans, { line = current_line_idx, from = dml_start_col - 1, to = dml_end_col_inclusive, hl_group = 'ApexLogTeal' })
-      end
+    if soql_dml_part_start_col > 0 then
+      table.insert(highlight_spans, { line = current_line_idx, from = soql_dml_part_start_col - 1, to = soql_dml_part_end_col, hl_group = 'ApexLogTeal' })
     end
   end
 
