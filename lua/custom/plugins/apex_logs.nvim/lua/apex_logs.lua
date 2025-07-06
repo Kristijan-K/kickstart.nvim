@@ -853,16 +853,7 @@ function M.analyzeLogs()
     if i == 1 then
       api.nvim_buf_set_lines(buf, 0, -1, false, user_debug_lines)
     elseif i == 2 then
-      -- Initial render for tree view
-      local initial_tree_lines, initial_tree_map, initial_tree_highlights = render_tree()
-      tree_lines = initial_tree_lines
-      tree_line_map = initial_tree_map
-      api.nvim_buf_set_lines(buf, 0, -1, false, tree_lines)
-      -- Apply initial highlights
-      api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-      for _, hl in ipairs(initial_tree_highlights) do
-        api.nvim_buf_add_highlight(buf, ns, hl.hl_group, hl.line_idx, hl.start_col, hl.end_col)
-      end
+      -- initial tree view is now handled by switch_tab
     elseif i == 3 then
       api.nvim_buf_set_lines(buf, 0, -1, false, soql_lines)
     elseif i == 4 then
@@ -1006,6 +997,9 @@ function M.analyzeLogs()
     vim.wo[win].winbar = get_tabline(idx)
     current_tab = idx
     add_highlights(current_tab)
+    if idx == 2 then
+      update_tree_view()
+    end
   end
 
   switch_tab(1)
