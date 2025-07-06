@@ -668,6 +668,47 @@ local function extract_tree_blocks(lines)
   return longest, roots
 end
 
+---@param roots TreeNode[]
+---@return string[]
+local function extract_node_counts(roots)
+  local counts = {}
+  local function traverse(node)
+    if node.has_soql_or_dml then
+      local name = node.name:gsub(' %(x%d+)', '') -- remove (xN) from name
+      counts[name] = (counts[name] or 0) + 1
+    end
+    if node.children then
+      for _, child in ipairs(node.children) do
+        traverse(child)
+      end
+    end
+  end
+
+  for _, root in ipairs(roots) do
+    traverse(root)
+  end
+
+  local sorted_counts = {}
+  for name, count in pairs(counts) do
+    table.insert(sorted_counts, { name = name, count = count })
+  end
+
+  table.sort(sorted_counts, function(a, b)
+    return a.count > b.count
+  end)
+
+  local lines = {}
+  for i, item in ipairs(sorted_counts) do
+    table.insert(lines, string.format('%d. %s: %d', i, item.name, item.count))
+  end
+
+  if #lines == 0 then
+    return { 'No nodes with SOQL or DML found.' }
+  end
+
+  return lines
+end
+
 function M.analyzeLogs()
   ensure_teal_hl()
   local orig_lines = api.nvim_buf_get_lines(0, 0, -1, false)
@@ -769,8 +810,9 @@ function M.analyzeLogs()
 
   -- Initial tree creation
   tree_longest, tree_roots = extract_tree_blocks(orig_lines)
+  local node_count_lines = extract_node_counts(tree_roots)
 
-  local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML', 'Exceptions' }
+  local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML', 'Exceptions', 'Node Counts' }
 
   for i, title in ipairs(tab_titles) do
     local buf = api.nvim_create_buf(false, true)
@@ -793,6 +835,8 @@ function M.analyzeLogs()
       api.nvim_buf_set_lines(buf, 0, -1, false, dml_lines)
     elseif i == 5 then
       api.nvim_buf_set_lines(buf, 0, -1, false, exception_lines)
+    elseif i == 6 then
+      api.nvim_buf_set_lines(buf, 0, -1, false, node_count_lines)
     else
       api.nvim_buf_set_lines(buf, 0, -1, false, { 'This is the [' .. title .. '] tab.' })
     end
