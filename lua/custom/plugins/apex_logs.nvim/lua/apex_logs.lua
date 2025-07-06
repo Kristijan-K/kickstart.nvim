@@ -599,10 +599,11 @@ local function extract_tree_blocks(lines)
           local total_ns = 0
           local total_soql = 0
           local total_dml = 0
+          local total_own_soql = 0
+          local total_own_dml = 0
           for j = i, group_end do
             total_ns = total_ns + ((children[j].end_ns or children[j].start_ns) - children[j].start_ns)
-            total_soql = total_soql + (children[j].soql_count or 0)
-            total_dml = total_dml + (children[j].dml_count or 0)
+            
           end
           local new_node = {
             tag = current_node.tag,
@@ -614,8 +615,10 @@ local function extract_tree_blocks(lines)
             parent = current_node.parent,
             expanded = false,
             line_idx = current_node.line_idx,
-            soql_count = total_soql,
-            dml_count = total_dml,
+            soql_count = current_node.soql_count,
+            dml_count = current_node.dml_count,
+            own_soql_count = current_node.own_soql_count,
+            own_dml_count = current_node.own_dml_count,
           }
           table.insert(aggregated_children, new_node)
           i = group_end + 1
@@ -689,7 +692,28 @@ local function extract_node_counts(roots)
   local function traverse(node)
     if node.has_soql_or_dml then
       local name = node.name:gsub(' %(x%d+)', '') -- remove (xN) from name
-      counts[name] = (counts[name] or 0) + 1
+      local repetition_count = 1
+      local rep_match = node.name:match('%(x(%d+)%)')
+      if rep_match then
+        repetition_count = tonumber(rep_match)
+      end
+
+      if not counts[name] then
+        counts[name] = { total_count = 0, total_soql = 0, total_own_soql = 0, total_dml = 0, total_own_dml = 0 }
+      end
+      counts[name].total_count = counts[name].total_count + 1
+      if counts[name].total_soql == 0 then
+        counts[name].total_soql = (node.soql_count or 0)
+      end
+      if counts[name].total_own_soql == 0 then
+        counts[name].total_own_soql = (node.own_soql_count or 0)
+      end
+      if counts[name].total_dml == 0 then
+        counts[name].total_dml = (node.dml_count or 0)
+      end
+      if counts[name].total_own_dml == 0 then
+        counts[name].total_own_dml = (node.own_dml_count or 0)
+      end
     end
     if node.children then
       for _, child in ipairs(node.children) do
@@ -703,17 +727,17 @@ local function extract_node_counts(roots)
   end
 
   local sorted_counts = {}
-  for name, count in pairs(counts) do
-    table.insert(sorted_counts, { name = name, count = count })
+  for name, data in pairs(counts) do
+    table.insert(sorted_counts, { name = name, total_count = data.total_count, total_soql = data.total_soql, total_own_soql = data.total_own_soql, total_dml = data.total_dml, total_own_dml = data.total_own_dml })
   end
 
   table.sort(sorted_counts, function(a, b)
-    return a.count > b.count
+    return a.total_count > b.total_count
   end)
 
   local lines = {}
   for i, item in ipairs(sorted_counts) do
-    table.insert(lines, string.format('%d. %s: %d', i, item.name, item.count))
+    table.insert(lines, string.format('%d. %s: %d (SOQL:%d DML:%d) (SOQL:%d DML:%d)', i, item.name, item.total_count, item.total_soql, item.total_dml, item.total_own_soql, item.total_own_dml))
   end
 
   if #lines == 0 then
@@ -1052,8 +1076,8 @@ function M.analyzeLogs()
           refresh_tree_buf()
         end,
       })
-    elseif i == 2 then
-      -- Method Tree tab: toggle SOQL truncation with 't'
+    elseif i == 2 or i == 6 then
+      -- Method Tree tab and Node Counts tab: toggle SOQL truncation with 't'
       api.nvim_buf_set_keymap(buf, 'n', 't', '', {
         noremap = true,
         nowait = true,
