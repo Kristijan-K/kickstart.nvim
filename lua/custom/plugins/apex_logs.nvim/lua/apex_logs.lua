@@ -687,11 +687,17 @@ end
 
 ---@param roots TreeNode[]
 ---@return string[]
-local function extract_node_counts(roots)
+local function extract_node_counts(roots, soql_truncate_flag, soql_truncate_where_flag)
   local counts = {}
   local function traverse(node)
     if node.has_soql_or_dml then
       local name = node.name:gsub(' %(x%d+)', '') -- remove (xN) from name
+      if soql_truncate_flag then
+        name = name:gsub('([sS][eE][lL][eE][cC][tT]).-%s+([fF][rR][oO][mM])%s+', '%1 ... %2 ')
+      end
+      if soql_truncate_where_flag then
+        name = name:gsub('%s+[wW][hH][eE][rR][eE]%s+.*', ' ...')
+      end
       local repetition_count = 1
       local rep_match = node.name:match('%(x(%d+)%)')
       if rep_match then
@@ -722,7 +728,7 @@ local function extract_node_counts(roots)
 
   local sorted_counts = {}
   for name, data in pairs(counts) do
-    table.insert(sorted_counts, { name = name, total_count = data.total_count, total_soql = data.total_soql, total_own_soql = data.total_own_soql, total_dml = data.total_dml, total_own_dml = data.total_own_dml })
+    table.insert(sorted_counts, { name = name, total_count = data.total_count, total_own_soql = data.total_own_soql, total_own_dml = data.total_own_dml })
   end
 
   table.sort(sorted_counts, function(a, b)
@@ -730,15 +736,35 @@ local function extract_node_counts(roots)
   end)
 
   local lines = {}
+  local highlight_spans = {}
   for i, item in ipairs(sorted_counts) do
-    table.insert(lines, string.format('%d. %s: %d (Own SOQL:%d Own DML:%d)', i, item.name, item.total_count, item.total_own_soql, item.total_own_dml))
+    local line_str = string.format('%d. %s: %d (Own SOQL:%d Own DML:%d)', i, item.name, item.total_count, item.total_own_soql, item.total_own_dml)
+    table.insert(lines, line_str)
+
+    local current_line_idx = #lines - 1
+
+    -- Calculate highlight for Own SOQL
+    local soql_start_pattern = '(Own SOQL:'
+    local soql_start_col = line_str:find(soql_start_pattern, 1, true)
+    if soql_start_col then
+      local soql_end_col = soql_start_col + #soql_start_pattern + #tostring(item.total_own_soql) - 1
+      table.insert(highlight_spans, { line = current_line_idx, from = soql_start_col - 1, to = soql_end_col, hl_group = 'ApexLogTeal' })
+    end
+
+    -- Calculate highlight for Own DML
+    local dml_start_pattern = 'Own DML:'
+    local dml_start_col = line_str:find(dml_start_pattern, 1, true)
+    if dml_start_col then
+      local dml_end_col = dml_start_col + #dml_start_pattern + #tostring(item.total_own_dml) - 1
+      table.insert(highlight_spans, { line = current_line_idx, from = dml_start_col - 1, to = dml_end_col, hl_group = 'ApexLogTeal' })
+    end
   end
 
   if #lines == 0 then
-    return { 'No nodes with SOQL or DML found.' }
+    return { 'No nodes with SOQL or DML found.' }, {}
   end
 
-  return lines
+  return lines, highlight_spans
 end
 
 function M.analyzeLogs()
@@ -862,7 +888,7 @@ function M.analyzeLogs()
 
   -- Initial tree creation
   tree_longest, tree_roots = extract_tree_blocks(orig_lines)
-  local node_count_lines = extract_node_counts(tree_roots)
+  local node_count_lines, node_count_spans = extract_node_counts(tree_roots, soql_truncate, soql_truncate_where)
 
   local tab_titles = { 'User Debug', 'Method Tree', 'SOQL', 'DML', 'Exceptions', 'Node Counts' }
 
@@ -880,6 +906,7 @@ function M.analyzeLogs()
       api.nvim_buf_set_lines(buf, 0, -1, false, exception_lines)
     elseif i == 6 then
       api.nvim_buf_set_lines(buf, 0, -1, false, node_count_lines)
+      node_count_spans = node_count_spans
     else
       api.nvim_buf_set_lines(buf, 0, -1, false, { 'This is the [' .. title .. '] tab.' })
     end
@@ -984,7 +1011,7 @@ function M.analyzeLogs()
 
   local function add_highlights(tab_idx)
     clear_highlights()
-    local spans = (tab_idx == 1 and userdebug_spans) or (tab_idx == 3 and soql_spans) or (tab_idx == 4 and dml_spans) or {}
+    local spans = (tab_idx == 1 and userdebug_spans) or (tab_idx == 3 and soql_spans) or (tab_idx == 4 and dml_spans) or (tab_idx == 6 and node_count_spans) or {}
     local buf = tab_bufs[tab_idx]
     for _, span in ipairs(spans or {}) do
       api.nvim_buf_add_highlight(buf, ns, 'ApexLogTeal', span.line, span.from, span.to)
