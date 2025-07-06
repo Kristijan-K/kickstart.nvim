@@ -597,8 +597,12 @@ local function extract_tree_blocks(lines)
 
         if group_end > i then
           local total_ns = 0
+          local total_soql = 0
+          local total_dml = 0
           for j = i, group_end do
             total_ns = total_ns + ((children[j].end_ns or children[j].start_ns) - children[j].start_ns)
+            total_soql = total_soql + (children[j].soql_count or 0)
+            total_dml = total_dml + (children[j].dml_count or 0)
           end
           local new_node = {
             tag = current_node.tag,
@@ -610,6 +614,8 @@ local function extract_tree_blocks(lines)
             parent = current_node.parent,
             expanded = false,
             line_idx = current_node.line_idx,
+            soql_count = total_soql,
+            dml_count = total_dml,
           }
           table.insert(aggregated_children, new_node)
           i = group_end + 1
@@ -639,8 +645,16 @@ local function extract_tree_blocks(lines)
   end
 
   local function aggregate_soql_dml(node)
+    node.own_soql_count = 0
+    node.own_dml_count = 0
+
     if node.children then
       for _, child in ipairs(node.children) do
+        if child.tag == 'SOQL_EXECUTE_BEGIN' then
+          node.own_soql_count = (node.own_soql_count or 0) + 1
+        elseif child.tag == 'DML_BEGIN' then
+          node.own_dml_count = (node.own_dml_count or 0) + 1
+        end
         aggregate_soql_dml(child)
         node.soql_count = (node.soql_count or 0) + (child.soql_count or 0)
         node.dml_count = (node.dml_count or 0) + (child.dml_count or 0)
@@ -763,12 +777,32 @@ function M.analyzeLogs()
       if (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0) then
         soql_dml_info = string.format(' (SOQL:%d DML:%d)', node.soql_count or 0, node.dml_count or 0)
       end
-      local line = indent .. mark .. node.name .. cr .. soql_dml_info .. string.format(' | %.2fms', node.duration)
+      local own_soql_dml_info = ''
+      if (node.own_soql_count and node.own_soql_count > 0) or (node.own_dml_count and node.own_dml_count > 0) then
+        own_soql_dml_info = string.format(' (SOQL:%d DML:%d)', node.own_soql_count or 0, node.own_dml_count or 0)
+      end
+
+      local line = indent
+        .. mark
+        .. node.name
+        .. cr
+        .. soql_dml_info
+        .. own_soql_dml_info
+        .. string.format(' | %.2fms', node.duration)
+
       -- Store the highlight information for later application
       if (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0) then
         local start_col = #indent + #mark + #node.name + #cr + 1 -- +1 for the space before (SOQL:...
-        local end_col = start_col + #soql_dml_info -1
+        local end_col = start_col + #soql_dml_info - 1
         table.insert(out_highlights, { line_idx = #out_lines, start_col = start_col, end_col = end_col, hl_group = 'ApexLogRed' })
+      end
+      if (node.own_soql_count and node.own_soql_count > 0) or (node.own_dml_count and node.own_dml_count > 0) then
+        local start_col = #indent + #mark + #node.name + #cr + #soql_dml_info + 1
+        local end_col = start_col + #own_soql_dml_info - 1
+        table.insert(
+          out_highlights,
+          { line_idx = #out_lines, start_col = start_col, end_col = end_col, hl_group = 'ApexLogTeal' }
+        )
       end
       table.insert(out_lines, line)
       if node.expanded and node.children then
