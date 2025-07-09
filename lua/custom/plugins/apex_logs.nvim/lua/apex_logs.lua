@@ -382,7 +382,8 @@ local function extract_exception_blocks(lines)
       -- Remove newlines from v.exception and v.soql for format string substitution
       local one_line_exception = v.exception:gsub('\n', ' ')
       local one_line_soql = v.soql:gsub('\n', ' ')
-      table.insert(indexed, string.format('%d. %s || SOQL: %s', i, one_line_exception, one_line_soql))
+      table.insert(indexed, string.format('%d. %s', i, one_line_exception))
+      table.insert(indexed, string.format('   SOQL: %s', one_line_soql))
     end
   end
 
