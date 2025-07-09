@@ -508,30 +508,6 @@ require('lazy').setup({
   },
 
   {
-    'nvimtools/none-ls.nvim', -- configure formatters & linters
-    event = { 'BufReadPre', 'BufNewFile' },
-    config = function()
-      local null_ls = require 'null-ls'
-      null_ls.setup {
-        sources = {
-          null_ls.builtins.formatting.prettier.with {
-            filetypes = { 'apex', 'apexcode' },
-            extra_args = { '--plugin=prettier-plugin-apex', '--write' },
-          },
-
-          null_ls.builtins.diagnostics.pmd.with {
-            -- pmd v7 needs to define the wrapper (ref: https://github.com/nvimtools/none-ls.nvim/issues/47)
-            -- #!/usr/bin/env bash
-            -- path/to/pmd/bin/pmd check "$@"
-
-            filetypes = { 'apex' },
-            args = { '--format', 'json', '--dir', '$ROOT', '--rulesets', 'apex_ruleset.xml', '--no-cache', '--no-progress' },
-          },
-        },
-      }
-    end,
-  },
-  {
     'nvim-treesitter/nvim-treesitter-context',
     dependencies = { 'nvim-treesitter/nvim-treesitter' },
     config = function()
@@ -851,13 +827,14 @@ require('lazy').setup({
       --    That is to say, every time a new file is opened that is associated with
       --    an lsp (for example, opening `main.rs` is associated with `rust_analyzer`) this
       --    function will be executed to configure the current buffer
+
       local function organize_imports()
-        local params = {
-          command = '_typescript.organizeImports',
-          arguments = { vim.api.nvim_buf_get_name(0) },
-          title = '',
+        vim.lsp.buf.code_action {
+          context = {
+            only = { 'source.organizeImports' },
+            diagnostics = {},
+          },
         }
-        vim.lsp.buf.execute_command(params)
       end
       vim.api.nvim_create_autocmd('LspAttach', {
         group = vim.api.nvim_create_augroup('kickstart-lsp-attach', { clear = true }),
@@ -1018,6 +995,20 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
+        lua_ls = {
+          -- cmd = { ... },
+          -- filetypes = { ... },
+          -- capabilities = {},
+          settings = {
+            Lua = {
+              completion = {
+                callSnippet = 'Replace',
+              },
+              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
+              -- diagnostics = { disable = { 'missing-fields' } },
+            },
+          },
+        },
         ts_ls = {
           on_attach = function(client, bufnr)
             client.server_capabilities.documentFormattingProvider = false
@@ -1034,22 +1025,7 @@ require('lazy').setup({
           },
           single_file_support = false,
         },
-        lwc_ls = {},
         visualforce_ls = {},
-        lua_ls = {
-          -- cmd = { ... },
-          -- filetypes = { ... },
-          -- capabilities = {},
-          settings = {
-            Lua = {
-              completion = {
-                callSnippet = 'Replace',
-              },
-              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
-            },
-          },
-        },
       }
 
       -- Ensure the servers and tools above are installed
@@ -1070,7 +1046,6 @@ require('lazy').setup({
         'stylua',
         'prettier',
         'prettierd',
-        'eslint', -- Used to format Lua code
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
