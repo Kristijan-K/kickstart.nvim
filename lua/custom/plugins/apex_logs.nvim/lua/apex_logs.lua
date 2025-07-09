@@ -326,7 +326,7 @@ local function extract_exception_blocks(lines)
 
   for _, line in ipairs(lines) do
     local line_lower = line:lower()
-    if (line_lower:find 'exception' or line_lower:find 'error') and not line:find 'SOQL_EXECUTE_BEGIN' then
+    if line_lower:find 'exception' and not line:find 'SOQL_EXECUTE_BEGIN' then
       local processed_line = line
       local first_pipe = line:find '|'
       if first_pipe then
