@@ -321,10 +321,20 @@ end
 ---@param lines string[]
 ---@return string[] exception_lines
 local function extract_exception_blocks(lines)
-  local processed_unique_lines = {}
-  local seen_lines = {}
+  local processed_lines = {}
+  local seen_exceptions = {}
 
+  local last_soql = nil
   for _, line in ipairs(lines) do
+    if line:find 'SOQL_EXECUTE_BEGIN' then
+      -- Store whole soql string, if present
+      local soql = line:match '[SELECT].*'
+      if soql then
+        last_soql = soql
+      else
+        last_soql = line
+      end
+    end
     local line_lower = line:lower()
     if line_lower:find 'exception' and not line:find 'SOQL_EXECUTE_BEGIN' then
       local processed_line = line
@@ -335,46 +345,48 @@ local function extract_exception_blocks(lines)
           processed_line = line:sub(second_pipe + 1)
         end
       end
-      -- Trim whitespace from the processed line for better comparison
       processed_line = processed_line:gsub('^%s*(.-)%s*$', '%1')
-      if not seen_lines[processed_line] then
-        table.insert(processed_unique_lines, processed_line)
-        seen_lines[processed_line] = true
+      -- Compose exception info as table: { exception=processed_line, soql=last_soql or 'N/A' }
+      local key = processed_line .. '||SOQL: ' .. (last_soql or 'N/A')
+      if not seen_exceptions[key] then
+        table.insert(processed_lines, { exception = processed_line, soql = last_soql or 'N/A' })
+        seen_exceptions[key] = true
       end
     end
   end
 
-  -- Sort by length in descending order for substring removal
-  table.sort(processed_unique_lines, function(a, b)
-    return #a > #b
+  -- Sort first by exception length
+  table.sort(processed_lines, function(a, b)
+    return #a.exception > #b.exception
   end)
 
-  local final_exception_lines = {}
-  local final_seen_lines = {}
-
-  for _, current_line in ipairs(processed_unique_lines) do
+  local filtered = {}
+  for _, item in ipairs(processed_lines) do
     local is_substring = false
-    for _, existing_line in ipairs(final_exception_lines) do
-      if existing_line:find(current_line, 1, true) then -- Check if current_line is a substring of an existing_line
+    for _, existing in ipairs(filtered) do
+      if existing.exception:find(item.exception, 1, true) then
         is_substring = true
         break
       end
     end
     if not is_substring then
-      table.insert(final_exception_lines, current_line)
+      table.insert(filtered, item)
     end
   end
 
-  local indexed_exception_lines = {}
-  if #final_exception_lines == 0 then
-    table.insert(indexed_exception_lines, 'No exceptions or errors found.')
+  local indexed = {}
+  if #filtered == 0 then
+    table.insert(indexed, 'No exceptions or errors found.')
   else
-    for i, line in ipairs(final_exception_lines) do
-      table.insert(indexed_exception_lines, string.format('%d. %s', i, line))
+    for i, v in ipairs(filtered) do
+      -- Remove newlines from v.exception and v.soql for format string substitution
+      local one_line_exception = v.exception:gsub('\n', ' ')
+      local one_line_soql = v.soql:gsub('\n', ' ')
+      table.insert(indexed, string.format('%d. %s || SOQL: %s', i, one_line_exception, one_line_soql))
     end
   end
 
-  return indexed_exception_lines
+  return indexed
 end
 
 ---@param lines string[]
@@ -603,7 +615,6 @@ local function extract_tree_blocks(lines)
           local total_own_dml = 0
           for j = i, group_end do
             total_ns = total_ns + ((children[j].end_ns or children[j].start_ns) - children[j].start_ns)
-            
           end
           local new_node = {
             tag = current_node.tag,
@@ -699,7 +710,7 @@ local function extract_node_counts(roots, soql_truncate_flag, soql_truncate_wher
         name = name:gsub('%s+[wW][hH][eE][rR][eE]%s+.*', ' ...')
       end
       local repetition_count = 1
-      local rep_match = node.name:match('%(x(%d+)%)')
+      local rep_match = node.name:match '%(x(%d+)%)'
       if rep_match then
         repetition_count = tonumber(rep_match)
       end
@@ -823,13 +834,7 @@ function M.analyzeLogs()
         own_soql_dml_info = string.format(' (SOQL:%d DML:%d)', node.own_soql_count or 0, node.own_dml_count or 0)
       end
 
-      local line = indent
-        .. mark
-        .. node.name
-        .. cr
-        .. soql_dml_info
-        .. own_soql_dml_info
-        .. string.format(' | %.2fms', node.duration)
+      local line = indent .. mark .. node.name .. cr .. soql_dml_info .. own_soql_dml_info .. string.format(' | %.2fms', node.duration)
 
       -- Store the highlight information for later application
       if (node.soql_count and node.soql_count > 0) or (node.dml_count and node.dml_count > 0) then
@@ -840,10 +845,7 @@ function M.analyzeLogs()
       if (node.own_soql_count and node.own_soql_count > 0) or (node.own_dml_count and node.own_dml_count > 0) then
         local start_col = #indent + #mark + #node.name + #cr + #soql_dml_info + 1
         local end_col = start_col + #own_soql_dml_info - 1
-        table.insert(
-          out_highlights,
-          { line_idx = #out_lines, start_col = start_col, end_col = end_col, hl_group = 'ApexLogTeal' }
-        )
+        table.insert(out_highlights, { line_idx = #out_lines, start_col = start_col, end_col = end_col, hl_group = 'ApexLogTeal' })
       end
       table.insert(out_lines, line)
       if node.expanded and node.children then
@@ -1018,7 +1020,11 @@ function M.analyzeLogs()
 
   local function add_highlights(tab_idx)
     clear_highlights()
-    local spans = (tab_idx == 1 and userdebug_spans) or (tab_idx == 3 and soql_spans) or (tab_idx == 4 and dml_spans) or (tab_idx == 6 and node_count_spans) or {}
+    local spans = (tab_idx == 1 and userdebug_spans)
+      or (tab_idx == 3 and soql_spans)
+      or (tab_idx == 4 and dml_spans)
+      or (tab_idx == 6 and node_count_spans)
+      or {}
     local buf = tab_bufs[tab_idx]
     for _, span in ipairs(spans or {}) do
       api.nvim_buf_add_highlight(buf, ns, 'ApexLogTeal', span.line, span.from, span.to)
