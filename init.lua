@@ -531,7 +531,7 @@ require('lazy').setup({
 
   {
     {
-      dir = '~/AppData/Local/nvim/lua/custom/plugins/sf.nvim',
+      dir = vim.fn.stdpath 'config' .. '/lua/custom/plugins/sf.nvim',
 
       config = function()
         require 'sf'
@@ -567,7 +567,7 @@ require('lazy').setup({
   },
   {
     {
-      dir = '~/AppData/Local/nvim/lua/custom/plugins/apex_logs.nvim',
+      dir = vim.fn.stdpath 'config' .. '/lua/custom/plugins/apex_logs.nvim',
 
       config = function()
         vim.keymap.set('n', '<leader>xl', '<cmd>SFLogs<CR><CR>', { desc = 'Analyze SF Logs' })
@@ -576,7 +576,7 @@ require('lazy').setup({
   },
   {
     {
-      dir = '~/AppData/Local/nvim/lua/custom/plugins/kk-marp.nvim',
+      dir = vim.fn.stdpath 'config' .. '/lua/custom/plugins/kk-marp.nvim',
 
       config = function()
         vim.keymap.set('n', '<leader>md', '<cmd>MarkdownPreview<CR><CR>', { desc = 'Start markdown preview' })
@@ -587,7 +587,7 @@ require('lazy').setup({
   },
   {
     {
-      dir = '~/AppData/Local/nvim/lua/custom/plugins/obsidian-scripts.nvim',
+      dir = vim.fn.stdpath 'config' .. '/lua/custom/plugins/obsidian-scripts.nvim',
       config = function()
         require 'obsidian-scripts'
       end,
