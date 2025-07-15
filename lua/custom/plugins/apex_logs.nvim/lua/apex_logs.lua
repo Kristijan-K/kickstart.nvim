@@ -703,7 +703,14 @@ local function extract_node_counts(roots, soql_truncate_flag, soql_truncate_wher
   local counts = {}
   local function traverse(node)
     if node.has_soql_or_dml then
-      local name = node.name:gsub(' %(x%d+)', '') -- remove (xN) from name
+      local name
+
+      if node and node.name then
+        name = node.name:gsub(' %(x%d+%)', '') -- remove (xN) from name
+      else
+        -- handle error
+        -- e.g., local name = ''
+      end
       if soql_truncate_flag then
         name = name:gsub('([sS][eE][lL][eE][cC][tT]).-%s+([fF][rR][oO][mM])%s+', '%1 ... %2 ')
       end
