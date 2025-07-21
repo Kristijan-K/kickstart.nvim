@@ -220,6 +220,29 @@ require('lazy').setup({
     'ThePrimeagen/vim-be-good',
   },
   {
+    'supermaven-inc/supermaven-nvim',
+    config = function()
+      require('supermaven-nvim').setup {
+        keymaps = {
+          accept_suggestion = '<Tab>',
+          clear_suggestion = '<C-]>',
+          accept_word = '<C-j>',
+        },
+        ignore_filetypes = { cpp = true }, -- or { "cpp", }
+        color = {
+          suggestion_color = '#ffffff',
+          cterm = 244,
+        },
+        log_level = 'info', -- set to "off" to disable logging completely
+        disable_inline_completion = false, -- disables inline completion for use with cmp
+        disable_keymaps = false, -- disables built in keymaps for more manual control
+        condition = function()
+          return false
+        end, -- condition to check for stopping supermaven, `true` means to stop supermaven when the condition is true.
+      }
+    end,
+  },
+  {
     'olimorris/codecompanion.nvim', -- The KING of AI programming
     dependencies = {
       'j-hui/fidget.nvim',
@@ -579,9 +602,9 @@ require('lazy').setup({
       dir = vim.fn.stdpath 'config' .. '/lua/custom/plugins/kk-marp.nvim',
 
       config = function()
-        vim.keymap.set('n', '<leader>md', '<cmd>MarkdownPreview<CR><CR>', { desc = 'Start markdown preview' })
-        vim.keymap.set('n', '<leader>mp', '<cmd>KKMarpStart<CR><CR>', { desc = 'Start presentation' })
-        vim.keymap.set('n', '<leader>me', '<cmd>KKMarpExport<CR><CR>', { desc = 'Export presentation' })
+        vim.keymap.set('n', '<leader>md', '<cmd>MarkdownPreview<CR>', { desc = 'Start markdown preview' })
+        vim.keymap.set('n', '<leader>mp', '<cmd>KKMarpStart<CR>', { desc = 'Start presentation' })
+        vim.keymap.set('n', '<leader>me', '<cmd>KKMarpExport<CR>', { desc = 'Export presentation' })
       end,
     },
   },
@@ -1469,9 +1492,11 @@ require('lspconfig').apex_ls.setup {
   cmd = {
     'java',
     '-jar',
-    vim.fn.expand '$HOME/apex-jorje-lsp.jar',
+
+    vim.fn.stdpath 'config' .. '/lsp_server/apex-jorje-lsp.jar',
   },
-  apex_jar_path = '/path/to/apex-jorje-lsp.jar',
+
+  apex_jar_path = vim.fn.stdpath 'config' .. '/lsp_server/apex-jorje-lsp.jar',
   apex_enable_semantic_errors = false,
   apex_enable_completion_statistics = false,
   filetypes = { 'apex', 'apexcode', 'cls', 'trigger' },
@@ -1492,5 +1517,8 @@ vim.keymap.set('n', '<leader>O', ':Oil<CR>', { desc = 'Open Oil File Explorer' }
 vim.keymap.set({ 'n', 'v' }, '<C-a>', '<cmd>CodeCompanionActions<cr>', { noremap = true, silent = true })
 vim.keymap.set({ 'n', 'v' }, '<LocalLeader>a', '<cmd>CodeCompanionChat Toggle<cr>', { noremap = true, silent = true })
 vim.keymap.set('v', 'ga', '<cmd>CodeCompanionChat Add<cr>', { noremap = true, silent = true })
+
+vim.keymap.set({ 'n', 'v' }, '<leader>y', '"+y', { desc = 'Yank to system clipboard' })
+vim.keymap.set('n', '<leader>Y', '"+Y', { desc = 'Yank line to system clipboard' })
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
