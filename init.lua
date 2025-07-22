@@ -590,8 +590,7 @@ require('lazy').setup({
   },
   {
     {
-      dir = vim.fn.stdpath 'config' .. '/lua/custom/plugins/apex_logs.nvim',
-
+      'Kristijan-K/log-analyzer',
       config = function()
         vim.keymap.set('n', '<leader>xl', '<cmd>SFLogs<CR><CR>', { desc = 'Analyze SF Logs' })
       end,
