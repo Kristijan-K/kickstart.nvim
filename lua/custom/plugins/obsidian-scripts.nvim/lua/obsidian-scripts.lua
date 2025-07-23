@@ -53,6 +53,10 @@ local function new_obsidian_note_with_template()
   new_obsidian_document_with_template('Note.md', '00-Inbox')
 end
 
+local function new_kaptio_presentation()
+  new_obsidian_document_with_template('Kaptio.md', 'Presentation')
+end
+
 local function new_obsidian_presentation_with_template()
   new_obsidian_document_with_template('Presentation.md', 'Presentation')
 end
@@ -135,6 +139,22 @@ local function moveNoteByTag()
   end
 end
 
+local function clean_non_md_presentations()
+  local presentation_dir = vim.fn.expand '~/Obsidian/Presentation/'
+  local files = vim.fn.glob(presentation_dir .. '*', true, true)
+  local deleted = 0
+
+  for _, file in ipairs(files) do
+    if not file:match '%.md$' then
+      if vim.fn.delete(file) == 0 then
+        deleted = deleted + 1
+      end
+    end
+  end
+
+  vim.notify(string.format('Removed %d non-.md files from Presentation folder', deleted), vim.log.levels.INFO)
+end
+
 local function addInboxFilesToQuickfix()
   local inbox_dir = vim.fn.expand '~/Obsidian/00-Inbox/' -- adjust if necessary
   local files = vim.fn.glob(inbox_dir .. '*.md', true, true) -- Get all .md files in Inbox folder
@@ -164,6 +184,9 @@ vim.keymap.set('n', '<leader>oz', addInboxFilesToQuickfix, { desc = 'Add Inbox f
 vim.keymap.set('n', '<leader>ox', deleteCurrentNote, { desc = 'Delete current note' })
 vim.keymap.set('n', '<leader>om', moveNoteByTag, { desc = 'Move note to Zettelkasten/{tag} or Archive' })
 vim.keymap.set('n', '<leader>on', new_obsidian_note_with_template, { desc = 'New note from Note.md template' })
+vim.keymap.set('n', '<leader>ok', new_kaptio_presentation, { desc = 'New presentation from Kaptio.md template' })
 vim.keymap.set('n', '<leader>op', new_obsidian_presentation_with_template, { desc = 'New Preentation from Presentation.md template' })
 vim.keymap.set('n', '<leader>od', open_obsidian_today, { desc = "Open today's daily note" })
 vim.keymap.set('n', '<leader>ow', open_or_create_weekly_note, { desc = 'Open/Create Weekly Note from Template' })
+
+vim.keymap.set('n', '<leader>oc', clean_non_md_presentations, { desc = 'Clean non-.md presentations' })
