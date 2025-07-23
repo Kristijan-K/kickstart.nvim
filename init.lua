@@ -561,21 +561,21 @@ require('lazy').setup({
         vim.keymap.set(
           'n',
           '<leader>xs',
-          '<cmd>SFExecute ' .. vim.fn.json_encode { reloadFile = true, keepOpen = true, cmd = 'sf project deploy start --source-dir' } .. '<CR><CR>',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { reloadFile = true, keepOpen = true, cmd = 'sf project deploy start --source-dir' } .. '<CR>',
           { desc = 'Push to Salesforce' }
         )
 
         vim.keymap.set(
           'n',
           '<leader>xr',
-          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf project retrieve start --source-dir' } .. '<CR><CR>',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf project retrieve start --source-dir' } .. '<CR>',
           { desc = 'Retrieve file from Salesforce' }
         )
 
         vim.keymap.set(
           'n',
           '<leader>xa',
-          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf apex run  --file ', keepOpen = true } .. '<CR><CR>',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf apex run  --file ', keepOpen = true } .. '<CR>',
           { desc = 'Execute anonymous' }
         )
 
@@ -584,7 +584,7 @@ require('lazy').setup({
           isTest = true,
           keepOpen = true,
           cmd = 'sf apex test run --tests %s --wait 10 --code-coverage --result-format human',
-        } .. '<CR><CR>', { desc = 'Run tests for current file' })
+        } .. '<CR>', { desc = 'Run tests for current file' })
       end,
     },
   },
@@ -592,7 +592,7 @@ require('lazy').setup({
     {
       'Kristijan-K/log-analyzer',
       config = function()
-        vim.keymap.set('n', '<leader>xl', '<cmd>SFLogs<CR><CR>', { desc = 'Analyze SF Logs' })
+        vim.keymap.set('n', '<leader>xl', '<cmd>SFLogs<CR>', { desc = 'Analyze SF Logs' })
       end,
     },
   },
@@ -1501,6 +1501,7 @@ require('lspconfig').apex_ls.setup {
   filetypes = { 'apex', 'apexcode', 'cls', 'trigger' },
 }
 
+require('lspconfig').html.setup {}
 vim.opt.foldmethod = 'expr'
 vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.opt.foldcolumn = '0'
