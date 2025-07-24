@@ -4,7 +4,7 @@ local function create_floating_window(opts, enter)
   if enter == nil then
     enter = false
   end
-    local width = math.floor(vim.o.columns * 0.95)
+  local width = math.floor(vim.o.columns * 0.95)
   local height = math.floor(vim.o.lines * 0.90)
   local row = math.floor((vim.o.lines - height) / 2)
   local col = math.floor((vim.o.columns - width) / 2)
@@ -37,6 +37,33 @@ end
 
 local output_lines = {}
 
+M.sf_execute = function(config)
+  local relpath = vim.fn.expand '%:.'
+  if config.path ~= nil then
+    relpath = config.path
+  end
+  local cmdString = ''
+  if config.isTest == true then
+    relpath = vim.fn.expand '%:t:r'
+    cmdString = string.format(config.cmd .. ' 2>&1', relpath)
+    cmdString = cmdString:gsub('"', '\\"')
+  else
+    cmdString = string.format(config.cmd .. ' %s 2>&1', relpath)
+  end
+  vim.notify(cmdString, vim.log.levels.INFO)
+  M.job_call(cmdString, nil, config)
+end
+
+local function get_cmd_args(cmd)
+  local sysname = vim.loop.os_uname().sysname
+  if sysname:match 'Windows' then
+    return { 'powershell.exe', '-Command', cmd }
+  else
+    -- Use the default shell on Unix/Linux
+    return { 'sh', '-c', cmd }
+  end
+end
+
 M.job_call = function(cmd, msg, config)
   output_lines = {}
 
@@ -54,8 +81,7 @@ M.job_call = function(cmd, msg, config)
     vim.api.nvim_win_set_cursor(float.win, { line_count, 0 })
   end
 
-  vim.fn.jobstart({ 'powershell.exe', '-Command', cmd }, {
-
+  vim.fn.jobstart(get_cmd_args(cmd), {
     stdout_buffered = false,
     stderr_buffered = false,
 
@@ -90,23 +116,6 @@ M.job_call = function(cmd, msg, config)
       end
     end,
   })
-end
-
-M.sf_execute = function(config)
-  local relpath = vim.fn.expand '%:.'
-  if config.path ~= nil then
-    relpath = config.path
-  end
-  local cmdString = ''
-  if config.isTest == true then
-    relpath = vim.fn.expand '%:t:r'
-    cmdString = string.format(config.cmd .. ' 2>&1', relpath)
-    cmdString = cmdString:gsub('"', '\\"')
-  else
-    cmdString = string.format(config.cmd .. ' %s 2>&1', relpath)
-  end
-  vim.notify(cmdString, vim.log.levels.INFO)
-  M.job_call(cmdString, nil, config)
 end
 
 return M

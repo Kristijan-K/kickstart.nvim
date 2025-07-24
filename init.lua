@@ -220,29 +220,6 @@ require('lazy').setup({
     'ThePrimeagen/vim-be-good',
   },
   {
-    'supermaven-inc/supermaven-nvim',
-    config = function()
-      require('supermaven-nvim').setup {
-        keymaps = {
-          accept_suggestion = '<Tab>',
-          clear_suggestion = '<C-]>',
-          accept_word = '<C-j>',
-        },
-        ignore_filetypes = { cpp = true }, -- or { "cpp", }
-        color = {
-          suggestion_color = '#ffffff',
-          cterm = 244,
-        },
-        log_level = 'info', -- set to "off" to disable logging completely
-        disable_inline_completion = true, -- disables inline completion for use with cmp
-        disable_keymaps = false, -- disables built in keymaps for more manual control
-        condition = function()
-          return false
-        end, -- condition to check for stopping supermaven, `true` means to stop supermaven when the condition is true.
-      }
-    end,
-  },
-  {
     'olimorris/codecompanion.nvim', -- The KING of AI programming
     dependencies = {
       'j-hui/fidget.nvim',
@@ -574,8 +551,14 @@ require('lazy').setup({
 
         vim.keymap.set(
           'n',
+          '<leader>xA',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf apex run --json --file ', keepOpen = true } .. '<CR>',
+          { desc = 'Execute anonymous' }
+        )
+        vim.keymap.set(
+          'n',
           '<leader>xa',
-          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf apex run  --file ', keepOpen = true } .. '<CR>',
+          '<cmd>SFExecute ' .. vim.fn.json_encode { cmd = 'sf apex run --file ', keepOpen = true } .. '<CR>',
           { desc = 'Execute anonymous' }
         )
 
@@ -1502,6 +1485,7 @@ require('lspconfig').apex_ls.setup {
 }
 
 require('lspconfig').html.setup {}
+
 vim.opt.foldmethod = 'expr'
 vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.opt.foldcolumn = '0'
