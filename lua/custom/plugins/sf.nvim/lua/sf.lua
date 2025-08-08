@@ -87,15 +87,37 @@ M.job_call = function(cmd, msg, config)
 
     on_stdout = function(_, data, _)
       if data and #data > 0 then
-        vim.list_extend(output_lines, data)
+        local should_clear = false
+        for i = 1, #data do
+          if data[i]:find 'Deploying' and data[i]:find 'Metadata' then
+            should_clear = true
+            break
+          end
+        end
+        if should_clear then
+          output_lines = {}
+        end
+        for i = 1, #data do
+          table.insert(output_lines, data[i])
+        end
         filter_lines()
       end
     end,
 
     on_stderr = function(_, data, _)
       if data and #data > 0 then
-        for i, line in ipairs(data) do
-          table.insert(output_lines, line)
+        local should_clear = false
+        for i = 1, #data do
+          if data[i]:find 'Deploying' and data[i]:find 'Metadata' then
+            should_clear = true
+            break
+          end
+        end
+        if should_clear then
+          output_lines = {}
+        end
+        for i = 1, #data do
+          table.insert(output_lines, data[i])
         end
         filter_lines()
       end
@@ -103,12 +125,16 @@ M.job_call = function(cmd, msg, config)
 
     on_exit = function(_, code)
       filter_lines()
+      if code == 0 then
+        table.insert(output_lines, 'Process exited normally.')
+      else
+        table.insert(output_lines, 'Process exited with error code: ' .. code)
+      end
       if config and config.reloadFile then
         vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter' }, {
           command = 'checktime',
         })
       end
-
       if config.keepOpen ~= true then
         vim.defer_fn(function()
           vim.api.nvim_win_close(float.win, true)
