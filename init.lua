@@ -9,7 +9,7 @@ if not api_key or api_key == '' then
 end
 
 api_key = api_key:match '^%s*(.-)%s*$'
--- Set to true if you have a Nerd Font installed and selected in the terminalinit
+-- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
 
 -- [[ Setting options ]]
@@ -155,7 +155,8 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
   if vim.v.shell_error ~= 0 then
     error('Error cloning lazy.nvim:\n' .. out)
   end
-end ---@diagnostic disable-next-line: undefined-field
+end
+---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
 -- [[ Configure and install plugins ]]
@@ -274,9 +275,9 @@ require('lazy').setup({
             schema = {
               model = {
                 default = function()
-                  return 'gpt-4.1'
-                  -- return 'gpt-3.5-turbo-1106'
-                end,
+                   return 'gpt-4-turbo'
+                   -- return 'gpt-3.5-turbo'
+                 end,
               },
             },
           })
@@ -372,9 +373,6 @@ require('lazy').setup({
     --
     dependencies = {
       'nvim-lua/plenary.nvim',
-      'hrsh7th/nvim-cmp',
-      'hrsh7th/cmp-buffer',
-      'hrsh7th/cmp-path',
     },
     opts = {
       workspaces = {
@@ -418,9 +416,9 @@ require('lazy').setup({
         },
         -- Use bullet marks for non-checkbox lists.
         bullets = { char = '•', hl_group = 'ObsidianBullet' },
-        -- external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
-        -- Replace the above with this if you don't have a patched font:
-        external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
+         -- external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
+         -- Replace the above with this if you don't have a patched font:
+         external_link_icon = { char = '🔗', hl_group = 'ObsidianExtLinkIcon' },
         reference_text = { hl_group = 'ObsidianRefText' },
         highlight_text = { hl_group = 'ObsidianHighlightText' },
         tags = { hl_group = 'ObsidianTag' },
@@ -579,9 +577,10 @@ require('lazy').setup({
   },
   {
     {
-      'Kristijan-K/log-analyzer',
+      dir = '~/dev/log-analyzer',
       config = function()
         vim.keymap.set('n', '<leader>xl', '<cmd>SFLogs<CR>', { desc = 'Analyze SF Logs' })
+        vim.keymap.set('n', '<leader>xd', '<cmd>SFDiff<CR>', { desc = 'Diff SF Logs' })
       end,
     },
   },
@@ -1170,25 +1169,7 @@ require('lazy').setup({
           --   end,
           -- },
         },
-        opts = {
-          sources = {
-            default = { 'obsidian', 'obsidian_new', 'obsidian_tags' },
-            providers = {
-              obsidian = {
-                name = 'obsidian',
-                module = 'blink.compat.source',
-              },
-              obsidian_new = {
-                name = 'obsidian_new',
-                module = 'blink.compat.source',
-              },
-              obsidian_tags = {
-                name = 'obsidian_tags',
-                module = 'blink.compat.source',
-              },
-            },
-          },
-        },
+        opts = {},
       },
       'folke/lazydev.nvim',
     },
@@ -1236,9 +1217,21 @@ require('lazy').setup({
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev' },
+        default = { 'lsp', 'path', 'snippets', 'lazydev', 'obsidian', 'obsidian_new', 'obsidian_tags' },
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+          obsidian = {
+            name = 'obsidian',
+            module = 'blink.compat.source',
+          },
+          obsidian_new = {
+            name = 'obsidian_new',
+            module = 'blink.compat.source',
+          },
+          obsidian_tags = {
+            name = 'obsidian_tags',
+            module = 'blink.compat.source',
+          },
         },
       },
 
@@ -1423,11 +1416,10 @@ require('telescope').setup {
 
 require('noice').setup {
   lsp = {
-    -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
+    -- override markdown rendering so that **blink** and other plugins use **Treesitter**
     override = {
       ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
       ['vim.lsp.util.stylize_markdown'] = true,
-      ['cmp.entry.get_documentation'] = true, -- requires hrsh7th/nvim-cmp
     },
   },
   -- you can enable a preset for easier configuration
@@ -1504,7 +1496,7 @@ vim.cmd 'au BufNewFile,BufRead *.apex :setl ft=apexcode'
 vim.cmd 'au BufNewFile,BufRead *.trigger :setl ft=apexcode'
 
 vim.keymap.set('n', '<leader>O', ':Oil<CR>', { desc = 'Open Oil File Explorer' })
-vim.keymap.set({ 'n', 'v' }, '<C-a>', '<cmd>CodeCompanionActions<cr>', { noremap = true, silent = true })
+vim.keymap.set({ 'n', 'v' }, '<leader>ca', '<cmd>CodeCompanionActions<cr>', { noremap = true, silent = true })
 vim.keymap.set({ 'n', 'v' }, '<LocalLeader>a', '<cmd>CodeCompanionChat Toggle<cr>', { noremap = true, silent = true })
 vim.keymap.set('v', 'ga', '<cmd>CodeCompanionChat Add<cr>', { noremap = true, silent = true })
 
