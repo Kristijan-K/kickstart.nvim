@@ -8,13 +8,60 @@ local function open_or_create_weekly_note()
   local filename = string.format('Week-%s-%s.md', year, week)
   local full_path = Path:new(vim.fn.expand('~/Obsidian/Weekly/' .. filename))
 
+  -- Calculate previous week
+  local week_num = tonumber(week)
+  local year_num = tonumber(year)
+  local prev_week_num = week_num - 1
+  local prev_year_num = year_num
+  if prev_week_num == 0 then
+    prev_week_num = 52 -- Approximate last week of previous year
+    prev_year_num = year_num - 1
+  end
+  local prev_week = string.format('%02d', prev_week_num)
+  local prev_year = tostring(prev_year_num)
+  local prev_filename = string.format('Week-%s-%s.md', prev_year, prev_week)
+  local prev_path = Path:new(vim.fn.expand('~/Obsidian/Weekly/' .. prev_filename))
+
+  -- Read uncompleted tasks from previous week
+  local uncompleted = {}
+  if prev_path:exists() then
+    local prev_lines = vim.fn.readfile(prev_path.filename)
+    for _, line in ipairs(prev_lines) do
+      if line:match '^%s*- %[ %]' then
+        table.insert(uncompleted, line)
+      end
+    end
+  end
+
   -- Open the file (create if it doesn't exist)
   vim.cmd('e ' .. full_path.filename)
 
-  -- If file is new (doesn't exist yet), insert template
+  -- If file is new (doesn't exist yet), insert template and replace to-do list
   if not full_path:exists() then
     vim.defer_fn(function()
       vim.cmd 'ObsidianTemplate Weekly.md'
+      vim.schedule(function()
+        local buf_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+        local todo_start
+        for i, line in ipairs(buf_lines) do
+          if line == '## ✅ To-Do List' then
+            todo_start = i
+            break
+          end
+        end
+        if todo_start then
+          -- Find the end of to-do items (until next ## or end)
+          local items_end = #buf_lines
+          for i = todo_start + 1, #buf_lines do
+            if buf_lines[i]:match '^##' then
+              items_end = i - 1
+              break
+            end
+          end
+          -- Replace the to-do items with uncompleted tasks
+          vim.api.nvim_buf_set_lines(0, todo_start, items_end, false, uncompleted)
+        end
+      end)
     end, 50)
   end
 end

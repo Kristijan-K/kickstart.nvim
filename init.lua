@@ -221,12 +221,6 @@ require('lazy').setup({
     'ThePrimeagen/vim-be-good',
   },
   {
-    'supermaven-inc/supermaven-nvim',
-    config = function()
-      require('supermaven-nvim').setup {}
-    end,
-  },
-  {
     'olimorris/codecompanion.nvim', -- The KING of AI programming
     dependencies = {
       'j-hui/fidget.nvim',
@@ -275,9 +269,9 @@ require('lazy').setup({
             schema = {
               model = {
                 default = function()
-                   return 'gpt-4-turbo'
-                   -- return 'gpt-3.5-turbo'
-                 end,
+                  return 'gpt-4-turbo'
+                  -- return 'gpt-3.5-turbo'
+                end,
               },
             },
           })
@@ -416,9 +410,9 @@ require('lazy').setup({
         },
         -- Use bullet marks for non-checkbox lists.
         bullets = { char = '•', hl_group = 'ObsidianBullet' },
-         -- external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
-         -- Replace the above with this if you don't have a patched font:
-         external_link_icon = { char = '🔗', hl_group = 'ObsidianExtLinkIcon' },
+        -- external_link_icon = { char = '', hl_group = 'ObsidianExtLinkIcon' },
+        -- Replace the above with this if you don't have a patched font:
+        external_link_icon = { char = '🔗', hl_group = 'ObsidianExtLinkIcon' },
         reference_text = { hl_group = 'ObsidianRefText' },
         highlight_text = { hl_group = 'ObsidianHighlightText' },
         tags = { hl_group = 'ObsidianTag' },
@@ -542,7 +536,9 @@ require('lazy').setup({
         vim.keymap.set(
           'n',
           '<leader>xs',
-          '<cmd>SFExecute ' .. vim.fn.json_encode { reloadFile = true, keepOpen = true, cmd = 'sf project deploy start --source-dir' } .. '<CR>',
+          '<cmd>SFExecute '
+            .. vim.fn.json_encode { reloadFile = true, keepOpen = true, cmd = 'sf project deploy start --ignore-conflicts --source-dir' }
+            .. '<CR>',
           { desc = 'Push to Salesforce' }
         )
 
@@ -731,6 +727,62 @@ require('lazy').setup({
         defaults = {
           file_ignore_patterns = {
             'node_modules',
+            'target',
+            '.git',
+            '.github',
+            '.vscode',
+            '.idea',
+            '.DS_Store',
+            '__pycache__',
+            '.ipynb_checkpoints',
+            '*.egg-info',
+            '*.egg',
+            '*.py[cod]',
+            '*.egg-info',
+            '*.egg',
+            'venv',
+            'env',
+            'build',
+            'dist',
+            '__pycache__',
+            'node_modules',
+            'target',
+            '.git',
+            '.github',
+            '.vscode',
+            '.idea',
+            '.DS_Store',
+            '__pycache__',
+            '.ipynb_checkpoints',
+            '*.egg-info',
+            '*.egg',
+            '*.py[cod]',
+            '*.egg-info',
+            '*.egg',
+            'venv',
+            'env',
+            'build',
+            'dist',
+            '__pycache__',
+            'node_modules',
+            'target',
+            '.git',
+            '.github',
+            '.vscode',
+            '.idea',
+            '.DS_Store',
+            '__pycache__',
+            '.ipynb_checkpoints',
+            '*.egg-info',
+            '*.egg',
+            '*.py[cod]',
+            '*.egg-info',
+            '*.egg',
+            'venv',
+            'env',
+            'build',
+            'dist',
+            '__pycache__',
           },
         },
       }
@@ -995,7 +1047,7 @@ require('lazy').setup({
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 
       local servers = {
-        -- clangd = {},
+        clangd = {},
         -- gopls = {},
         -- pyright = {},
         rust_analyzer = {},
