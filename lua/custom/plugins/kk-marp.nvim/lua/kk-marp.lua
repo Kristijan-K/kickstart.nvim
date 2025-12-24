@@ -10,7 +10,7 @@ M.start_presentation = function()
   local output_file = dir .. sep .. filename_no_ext .. '.html'
 
   local cmd_marp = 'marp ' .. fullpath .. ' -o ' .. output_file
-  local open_cmd = is_windows and ('start "" "file:///' .. output_file .. '"') or ('brave "' .. output_file .. '"')
+  local open_cmd = is_windows and ('start "" "file:///' .. output_file .. '"') or ('xdg-open "' .. output_file .. '"')
 
   vim.schedule(function()
     vim.notify('Running Marp command:\n' .. cmd_marp, vim.log.levels.INFO)
